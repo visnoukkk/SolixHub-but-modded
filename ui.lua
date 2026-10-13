@@ -142,7 +142,9 @@ local Library do
 		UnusedHolder = nil,
 		Font = nil,
 		KeyList = nil,
-		LegacyMove = true
+		LegacyMove = true,
+		NotifyPos = "CenterBottom",
+		NotifListLayout = nil
 	}
 
 	Library.__index = Library
@@ -934,7 +936,7 @@ local Library do
 		BackgroundColor3 = FromRGB(255, 255, 255)
 	})
 
-	Instances:Create("UIListLayout", {
+	Library.NotifListLayout = Instances:Create("UIListLayout", {
 		Parent = Library.NotifHolder.Instance,
 		Name = "\0",
 		Padding = UDimNew(0, 8),
@@ -951,6 +953,101 @@ local Library do
 		PaddingRight = UDimNew(0, 0),
 		PaddingLeft = UDimNew(0, 0)
 	})
+
+	-- Notify position presets
+	local NotifyPositions = {
+		CenterBottom = {
+			AnchorPoint = Vector2New(0.5, 1),
+			Position = UDim2New(0.5, 0, 1, -18),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Bottom
+		},
+		RightTop = {
+			AnchorPoint = Vector2New(1, 0),
+			Position = UDim2New(1, -18, 0, 18),
+			HorizontalAlignment = Enum.HorizontalAlignment.Right,
+			VerticalAlignment = Enum.VerticalAlignment.Top
+		},
+		BottomLeft = {
+			AnchorPoint = Vector2New(0, 1),
+			Position = UDim2New(0, 18, 1, -18),
+			HorizontalAlignment = Enum.HorizontalAlignment.Left,
+			VerticalAlignment = Enum.VerticalAlignment.Bottom
+		},
+		BottomRight = {
+			AnchorPoint = Vector2New(1, 1),
+			Position = UDim2New(1, -18, 1, -18),
+			HorizontalAlignment = Enum.HorizontalAlignment.Right,
+			VerticalAlignment = Enum.VerticalAlignment.Bottom
+		},
+		CenterBottomLeft = {
+			AnchorPoint = Vector2New(0.5, 1),
+			Position = UDim2New(0.28, 0, 1, -18),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Bottom
+		},
+		CenterBottomRight = {
+			AnchorPoint = Vector2New(0.5, 1),
+			Position = UDim2New(0.72, 0, 1, -18),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Bottom
+		},
+		CenterTop = {
+			AnchorPoint = Vector2New(0.5, 0),
+			Position = UDim2New(0.5, 0, 0, 18),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Top
+		},
+		CenterTopLeft = {
+			AnchorPoint = Vector2New(0.5, 0),
+			Position = UDim2New(0.28, 0, 0, 18),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Top
+		},
+		CenterTopRight = {
+			AnchorPoint = Vector2New(0.5, 0),
+			Position = UDim2New(0.72, 0, 0, 18),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Top
+		},
+		Left = {
+			AnchorPoint = Vector2New(0, 0.5),
+			Position = UDim2New(0, 18, 0.5, 0),
+			HorizontalAlignment = Enum.HorizontalAlignment.Left,
+			VerticalAlignment = Enum.VerticalAlignment.Center
+		},
+		Right = {
+			AnchorPoint = Vector2New(1, 0.5),
+			Position = UDim2New(1, -18, 0.5, 0),
+			HorizontalAlignment = Enum.HorizontalAlignment.Right,
+			VerticalAlignment = Enum.VerticalAlignment.Center
+		}
+	}
+
+	Library.SetNotifyPos = function(self, Pos)
+		Pos = tostring(Pos or "CenterBottom")
+
+		local Data = NotifyPositions[Pos]
+		if not Data then
+			warn("[Library] Invalid NotifyPos: " .. Pos)
+			return false
+		end
+
+		self.NotifyPos = Pos
+
+		local Holder = self.NotifHolder and self.NotifHolder.Instance
+		local Layout = self.NotifListLayout and self.NotifListLayout.Instance
+		if not Holder or not Layout then
+			return false
+		end
+
+		Holder.AnchorPoint = Data.AnchorPoint
+		Holder.Position = Data.Position
+		Layout.HorizontalAlignment = Data.HorizontalAlignment
+		Layout.VerticalAlignment = Data.VerticalAlignment
+
+		return true
+	end
 
 	Library.Unload = function(self)
 		for Index, Value in self.Connections do 
@@ -4970,6 +5067,9 @@ local Library do
 			Window.LegacyMove = true
 		end
 		Library.LegacyMove = Window.LegacyMove and true or false
+
+		local NotifyPos = Properties.NotifyPos or Properties.notifypos or Library.NotifyPos or "CenterBottom"
+		Library:SetNotifyPos(NotifyPos)
 
 		local Items = { } do
 			Items["MainFrame"] = Instances:Create("Frame", {
