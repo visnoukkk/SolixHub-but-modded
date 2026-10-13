@@ -4559,8 +4559,9 @@ local Library do
 			Items["KeybindList"] = Instances:Create("Frame", {
 				Parent = Library.Holder.Instance,
 				Name = "\0",
-				BackgroundTransparency = 0.30000001192092896,
-				Position = UDim2New(0, 15, 0.5, 0),
+				BackgroundTransparency = 0.08,
+				Position = UDim2New(0, 18, 0.5, 0),
+				AnchorPoint = Vector2New(0, 0.5),
 				BorderColor3 = FromRGB(0, 0, 0),
 				BorderSizePixel = 0,
 				AutomaticSize = Enum.AutomaticSize.XY,
@@ -4572,38 +4573,102 @@ local Library do
 			Instances:Create("UICorner", {
 				Parent = Items["KeybindList"].Instance,
 				Name = "\0",
-				CornerRadius = UDimNew(0, 5)
+				CornerRadius = UDimNew(0, 8)
 			})
 
-			Items["Title"] = Instances:Create("TextLabel", {
+			-- Soft outer stroke
+			local ListStroke = Instances:Create("UIStroke", {
 				Parent = Items["KeybindList"].Instance,
 				Name = "\0",
-				FontFace = Library.Font,
-				TextColor3 = FromRGB(255, 255, 255),
-				BorderColor3 = FromRGB(0, 0, 0),
-				Text = "Keybinds",
-				BackgroundTransparency = 1,
-				Size = UDim2New(0, 0, 0, 15),
+				Color = FromRGB(41, 37, 45),
+				Thickness = 1,
+				Transparency = 0.35
+			})
+			ListStroke:AddToTheme({Color = "Border"})
+
+			-- Accent top accent bar
+			Items["AccentBar"] = Instances:Create("Frame", {
+				Parent = Items["KeybindList"].Instance,
+				Name = "\0",
 				BorderSizePixel = 0,
-				AutomaticSize = Enum.AutomaticSize.X,
-				TextSize = 14,
-				BackgroundColor3 = FromRGB(255, 255, 255)
-			})  Items["Title"]:AddToTheme({TextColor3 = "Text"})
+				Size = UDim2New(1, 0, 0, 3),
+				Position = UDim2New(0, 0, 0, 0),
+				BackgroundColor3 = FromRGB(232, 186, 248),
+				ZIndex = 3
+			})  Items["AccentBar"]:AddToTheme({BackgroundColor3 = "Accent"})
+
+			Instances:Create("UICorner", {
+				Parent = Items["AccentBar"].Instance,
+				Name = "\0",
+				CornerRadius = UDimNew(0, 8)
+			})
+
+			-- Clip the bottom of the accent bar so only top is rounded
+			Items["AccentClip"] = Instances:Create("Frame", {
+				Parent = Items["AccentBar"].Instance,
+				Name = "\0",
+				BorderSizePixel = 0,
+				Size = UDim2New(1, 0, 0, 4),
+				Position = UDim2New(0, 0, 1, -1),
+				BackgroundColor3 = FromRGB(232, 186, 248),
+				ZIndex = 3
+			})  Items["AccentClip"]:AddToTheme({BackgroundColor3 = "Accent"})
 
 			Instances:Create("UIPadding", {
 				Parent = Items["KeybindList"].Instance,
 				Name = "\0",
-				PaddingTop = UDimNew(0, 8),
-				PaddingBottom = UDimNew(0, 8),
-				PaddingRight = UDimNew(0, 8),
-				PaddingLeft = UDimNew(0, 8)
+				PaddingTop = UDimNew(0, 12),
+				PaddingBottom = UDimNew(0, 10),
+				PaddingRight = UDimNew(0, 12),
+				PaddingLeft = UDimNew(0, 12)
+			})
+
+			-- Header row
+			Items["Header"] = Instances:Create("Frame", {
+				Parent = Items["KeybindList"].Instance,
+				Name = "\0",
+				BackgroundTransparency = 1,
+				Size = UDim2New(0, 0, 0, 20),
+				AutomaticSize = Enum.AutomaticSize.X,
+				BorderSizePixel = 0
+			})
+
+			Items["Title"] = Instances:Create("TextLabel", {
+				Parent = Items["Header"].Instance,
+				Name = "\0",
+				FontFace = Library.Font,
+				TextColor3 = FromRGB(255, 255, 255),
+				BorderColor3 = FromRGB(0, 0, 0),
+				Text = "KEYBINDS",
+				BackgroundTransparency = 1,
+				Size = UDim2New(0, 0, 0, 18),
+				BorderSizePixel = 0,
+				AutomaticSize = Enum.AutomaticSize.X,
+				TextSize = 13,
+				BackgroundColor3 = FromRGB(255, 255, 255)
+			})  Items["Title"]:AddToTheme({TextColor3 = "Text"})
+
+			-- Divider under header
+			Items["Divider"] = Instances:Create("Frame", {
+				Parent = Items["KeybindList"].Instance,
+				Name = "\0",
+				BorderSizePixel = 0,
+				Size = UDim2New(1, 0, 0, 1),
+				BackgroundColor3 = FromRGB(41, 37, 45),
+				BackgroundTransparency = 0.4
+			})  Items["Divider"]:AddToTheme({BackgroundColor3 = "Border"})
+
+			Instances:Create("UIListLayout", {
+				Parent = Items["KeybindList"].Instance,
+				Name = "\0",
+				Padding = UDimNew(0, 8),
+				SortOrder = Enum.SortOrder.LayoutOrder
 			})
 
 			Items["Content"] = Instances:Create("Frame", {
 				Parent = Items["KeybindList"].Instance,
 				Name = "\0",
 				BackgroundTransparency = 1,
-				Position = UDim2New(0, 8, 0, 20),
 				BorderColor3 = FromRGB(0, 0, 0),
 				BorderSizePixel = 0,
 				AutomaticSize = Enum.AutomaticSize.XY,
@@ -4613,51 +4678,171 @@ local Library do
 			Instances:Create("UIListLayout", {
 				Parent = Items["Content"].Instance,
 				Name = "\0",
-				Padding = UDimNew(0, 4),
+				Padding = UDimNew(0, 5),
 				SortOrder = Enum.SortOrder.LayoutOrder
-			})
-
-			Instances:Create("UIPadding", {
-				Parent = Items["Content"].Instance,
-				Name = "\0",
-				PaddingRight = UDimNew(0, 5)
 			})
 		end
 
 		function KeybindList:Add(Key, Name, Mode)
-			local NewKey = Instances:Create("TextLabel", {
+			-- Row container
+			local Row = Instances:Create("Frame", {
 				Parent = Items["Content"].Instance,
+				Name = "\0",
+				BackgroundTransparency = 1,
+				Size = UDim2New(0, 0, 0, 26),
+				AutomaticSize = Enum.AutomaticSize.X,
+				BorderSizePixel = 0
+			})
+
+			local RowLayout = Instances:Create("UIListLayout", {
+				Parent = Row.Instance,
+				Name = "\0",
+				FillDirection = Enum.FillDirection.Horizontal,
+				VerticalAlignment = Enum.VerticalAlignment.Center,
+				Padding = UDimNew(0, 8),
+				SortOrder = Enum.SortOrder.LayoutOrder
+			})
+
+			-- Active indicator bar (left)
+			local Indicator = Instances:Create("Frame", {
+				Parent = Row.Instance,
+				Name = "\0",
+				BorderSizePixel = 0,
+				Size = UDim2New(0, 3, 0, 18),
+				BackgroundColor3 = FromRGB(41, 37, 45),
+				BackgroundTransparency = 0.5,
+				LayoutOrder = 1
+			})  Indicator:AddToTheme({BackgroundColor3 = "Border"})
+
+			Instances:Create("UICorner", {
+				Parent = Indicator.Instance,
+				Name = "\0",
+				CornerRadius = UDimNew(1, 0)
+			})
+
+			-- Key badge
+			local KeyBadge = Instances:Create("Frame", {
+				Parent = Row.Instance,
+				Name = "\0",
+				BorderSizePixel = 0,
+				Size = UDim2New(0, 0, 0, 22),
+				AutomaticSize = Enum.AutomaticSize.X,
+				BackgroundColor3 = FromRGB(36, 32, 39),
+				LayoutOrder = 2
+			})  KeyBadge:AddToTheme({BackgroundColor3 = "Element"})
+
+			Instances:Create("UICorner", {
+				Parent = KeyBadge.Instance,
+				Name = "\0",
+				CornerRadius = UDimNew(0, 5)
+			})
+
+			Instances:Create("UIPadding", {
+				Parent = KeyBadge.Instance,
+				Name = "\0",
+				PaddingLeft = UDimNew(0, 8),
+				PaddingRight = UDimNew(0, 8)
+			})
+
+			local KeyText = Instances:Create("TextLabel", {
+				Parent = KeyBadge.Instance,
+				Name = "\0",
+				FontFace = Library.Font,
+				TextColor3 = FromRGB(232, 186, 248),
+				Text = tostring(Key),
+				BackgroundTransparency = 1,
+				Size = UDim2New(0, 0, 1, 0),
+				AutomaticSize = Enum.AutomaticSize.X,
+				BorderSizePixel = 0,
+				TextSize = 12
+			})  KeyText:AddToTheme({TextColor3 = "Accent"})
+
+			-- Name label
+			local NameLabel = Instances:Create("TextLabel", {
+				Parent = Row.Instance,
 				Name = "\0",
 				FontFace = Library.Font,
 				TextColor3 = FromRGB(255, 255, 255),
-				BorderColor3 = FromRGB(0, 0, 0),
-				Text = ""..Key.." - ".. Name .. " (".. Mode .. ")",
+				Text = tostring(Name),
 				BackgroundTransparency = 1,
-				Size = UDim2New(0, 0, 0, 20),
-				BorderSizePixel = 0,
+				Size = UDim2New(0, 0, 0, 18),
 				AutomaticSize = Enum.AutomaticSize.X,
-				TextSize = 14,
-				BackgroundColor3 = FromRGB(255, 255, 255)
-			})  NewKey:AddToTheme({TextColor3 = "Text"})
+				BorderSizePixel = 0,
+				TextSize = 13,
+				LayoutOrder = 3
+			})  NameLabel:AddToTheme({TextColor3 = "Text"})
 
-			Instances:Create("UIPadding", {
-				Parent = NewKey.Instance,
+			-- Mode tag
+			local ModeBadge = Instances:Create("Frame", {
+				Parent = Row.Instance,
 				Name = "\0",
-				PaddingRight = UDimNew(0, 3),
-				PaddingLeft = UDimNew(0, 3)
+				BorderSizePixel = 0,
+				Size = UDim2New(0, 0, 0, 18),
+				AutomaticSize = Enum.AutomaticSize.X,
+				BackgroundColor3 = FromRGB(22, 20, 24),
+				LayoutOrder = 4
+			})  ModeBadge:AddToTheme({BackgroundColor3 = "Inline"})
+
+			Instances:Create("UICorner", {
+				Parent = ModeBadge.Instance,
+				Name = "\0",
+				CornerRadius = UDimNew(0, 4)
 			})
 
+			Instances:Create("UIPadding", {
+				Parent = ModeBadge.Instance,
+				Name = "\0",
+				PaddingLeft = UDimNew(0, 6),
+				PaddingRight = UDimNew(0, 6)
+			})
+
+			local ModeText = Instances:Create("TextLabel", {
+				Parent = ModeBadge.Instance,
+				Name = "\0",
+				FontFace = Library.Font,
+				TextColor3 = FromRGB(185, 185, 185),
+				Text = tostring(Mode),
+				BackgroundTransparency = 1,
+				Size = UDim2New(0, 0, 1, 0),
+				AutomaticSize = Enum.AutomaticSize.X,
+				BorderSizePixel = 0,
+				TextSize = 11
+			})  ModeText:AddToTheme({TextColor3 = "Inactive Text"})
+
+			local NewKey = {
+				Row = Row,
+				Indicator = Indicator,
+				KeyText = KeyText,
+				NameLabel = NameLabel,
+				ModeText = ModeText,
+				KeyBadge = KeyBadge
+			}
+
 			function NewKey:Set(Key, Name, Mode)
-				NewKey.Instance.Text = ""..Key.." - ".. Name .. " (".. Mode .. ")"
+				KeyText.Instance.Text = tostring(Key)
+				NameLabel.Instance.Text = tostring(Name)
+				ModeText.Instance.Text = tostring(Mode)
 			end
 
 			function NewKey:SetStatus(Bool)
-				if Bool then 
-					NewKey:ChangeItemTheme({TextColor3 = "Accent"})
-					NewKey:Tween(nil, {TextColor3 = Library.Theme.Accent})
+				if Bool then
+					Indicator:ChangeItemTheme({BackgroundColor3 = "Accent"})
+					Indicator:Tween(nil, {BackgroundColor3 = Library.Theme.Accent, BackgroundTransparency = 0})
+					KeyBadge:ChangeItemTheme({BackgroundColor3 = "Accent"})
+					KeyBadge:Tween(nil, {BackgroundColor3 = Library.Theme.Accent})
+					KeyText:ChangeItemTheme({TextColor3 = "Background"})
+					KeyText:Tween(nil, {TextColor3 = Library.Theme.Background})
+					NameLabel:ChangeItemTheme({TextColor3 = "Accent"})
+					NameLabel:Tween(nil, {TextColor3 = Library.Theme.Accent})
 				else
-					NewKey:ChangeItemTheme({TextColor3 = "Text"})
-					NewKey:Tween(nil, {TextColor3 = Library.Theme.Text})
+					Indicator:ChangeItemTheme({BackgroundColor3 = "Border"})
+					Indicator:Tween(nil, {BackgroundColor3 = Library.Theme.Border, BackgroundTransparency = 0.5})
+					KeyBadge:ChangeItemTheme({BackgroundColor3 = "Element"})
+					KeyBadge:Tween(nil, {BackgroundColor3 = Library.Theme.Element})
+					KeyText:ChangeItemTheme({TextColor3 = "Accent"})
+					KeyText:Tween(nil, {TextColor3 = Library.Theme.Accent})
+					NameLabel:ChangeItemTheme({TextColor3 = "Text"})
+					NameLabel:Tween(nil, {TextColor3 = Library.Theme.Text})
 				end
 			end
 
@@ -4680,76 +4865,150 @@ local Library do
 				Name = "\0",
 				BorderColor3 = FromRGB(0, 0, 0),
 				AnchorPoint = Vector2New(0.5, 0),
-				Position = UDim2New(0.5, 0, 0, 15),
-				Size = UDim2New(0, 100, 0, 60),
+				Position = UDim2New(0.5, 0, 0, 12),
+				Size = UDim2New(0, 0, 0, 32),
 				BorderSizePixel = 0,
-				AutomaticSize = Enum.AutomaticSize.XY,
-				BackgroundColor3 = FromRGB(16, 18, 21)
+				AutomaticSize = Enum.AutomaticSize.X,
+				BackgroundColor3 = FromRGB(15, 12, 16),
+				BackgroundTransparency = 0.08
 			})  Items["Watermark"]:AddToTheme({BackgroundColor3 = "Background"})
-
-			Instances:Create("UIGradient", {
-				Parent = Items["Watermark"].Instance,
-				Name = "\0",
-				Rotation = 84,
-				Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(211, 211, 211))}
-			}):AddToTheme({Color = function()
-				return RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, Library.Theme.Gradient)}
-			end})
 
 			Instances:Create("UICorner", {
 				Parent = Items["Watermark"].Instance,
 				Name = "\0",
-				CornerRadius = UDimNew(0, 5)
+				CornerRadius = UDimNew(0, 7)
 			})
 
-			Items["Text"] = Instances:Create("TextLabel", {
+			local WmStroke = Instances:Create("UIStroke", {
 				Parent = Items["Watermark"].Instance,
 				Name = "\0",
-				FontFace = Library.Font,
-				TextColor3 = FromRGB(255, 255, 255),
-				BorderColor3 = FromRGB(0, 0, 0),
-				Text = Name,
-				Size = UDim2New(0, 0, 0, 0),
-				AnchorPoint = Vector2New(0, 0.5),
-				Position = UDim2New(0, 0, 0.5, 0),
-				BackgroundTransparency = 1,
-				TextXAlignment = Enum.TextXAlignment.Center,
+				Color = FromRGB(41, 37, 45),
+				Thickness = 1,
+				Transparency = 0.35
+			})
+			WmStroke:AddToTheme({Color = "Border"})
+
+			-- Left accent pill
+			Items["Accent"] = Instances:Create("Frame", {
+				Parent = Items["Watermark"].Instance,
+				Name = "\0",
 				BorderSizePixel = 0,
-				AutomaticSize = Enum.AutomaticSize.XY,
-				TextSize = 14,
-				BackgroundColor3 = FromRGB(255, 255, 255)
-			})  Items["Text"]:AddToTheme({TextColor3 = "Text"})
+				Size = UDim2New(0, 4, 1, -10),
+				Position = UDim2New(0, 6, 0.5, 0),
+				AnchorPoint = Vector2New(0, 0.5),
+				BackgroundColor3 = FromRGB(232, 186, 248),
+				ZIndex = 2
+			})  Items["Accent"]:AddToTheme({BackgroundColor3 = "Accent"})
+
+			Instances:Create("UICorner", {
+				Parent = Items["Accent"].Instance,
+				Name = "\0",
+				CornerRadius = UDimNew(1, 0)
+			})
 
 			Instances:Create("UIPadding", {
 				Parent = Items["Watermark"].Instance,
 				Name = "\0",
-				PaddingTop = UDimNew(0, 7),
-				PaddingBottom = UDimNew(0, 7),
-				PaddingRight = UDimNew(0, 7),
-				PaddingLeft = UDimNew(0, 7)
+				PaddingTop = UDimNew(0, 0),
+				PaddingBottom = UDimNew(0, 0),
+				PaddingRight = UDimNew(0, 14),
+				PaddingLeft = UDimNew(0, 18)
 			})
+
+			Items["Content"] = Instances:Create("Frame", {
+				Parent = Items["Watermark"].Instance,
+				Name = "\0",
+				BackgroundTransparency = 1,
+				Size = UDim2New(0, 0, 1, 0),
+				AutomaticSize = Enum.AutomaticSize.X,
+				BorderSizePixel = 0
+			})
+
+			Instances:Create("UIListLayout", {
+				Parent = Items["Content"].Instance,
+				Name = "\0",
+				FillDirection = Enum.FillDirection.Horizontal,
+				VerticalAlignment = Enum.VerticalAlignment.Center,
+				Padding = UDimNew(0, 0),
+				SortOrder = Enum.SortOrder.LayoutOrder
+			})
+
+			local function MakeSegment(Text, IsAccent, LayoutOrder)
+				local Label = Instances:Create("TextLabel", {
+					Parent = Items["Content"].Instance,
+					Name = "\0",
+					FontFace = Library.Font,
+					TextColor3 = IsAccent and FromRGB(232, 186, 248) or FromRGB(255, 255, 255),
+					Text = Text,
+					BackgroundTransparency = 1,
+					Size = UDim2New(0, 0, 1, 0),
+					AutomaticSize = Enum.AutomaticSize.X,
+					BorderSizePixel = 0,
+					TextSize = 13,
+					LayoutOrder = LayoutOrder
+				})
+				if IsAccent then
+					Label:AddToTheme({TextColor3 = "Accent"})
+				else
+					Label:AddToTheme({TextColor3 = "Text"})
+				end
+				return Label
+			end
+
+			local function MakeSep(LayoutOrder)
+				local Sep = Instances:Create("TextLabel", {
+					Parent = Items["Content"].Instance,
+					Name = "\0",
+					FontFace = Library.Font,
+					TextColor3 = FromRGB(185, 185, 185),
+					Text = "  •  ",
+					BackgroundTransparency = 1,
+					Size = UDim2New(0, 0, 1, 0),
+					AutomaticSize = Enum.AutomaticSize.X,
+					BorderSizePixel = 0,
+					TextSize = 11,
+					LayoutOrder = LayoutOrder
+				})
+				Sep:AddToTheme({TextColor3 = "Inactive Text"})
+				return Sep
+			end
+
+			Items["NameLabel"] = MakeSegment(Name or "eclipse", true, 1)
+			MakeSep(2)
+			Items["FpsLabel"] = MakeSegment("FPS: 60", false, 3)
+			MakeSep(4)
+			Items["PingLabel"] = MakeSegment("PING: 0 ms", false, 5)
 		end
 
 		function Watermark:SetVisible(Bool)
 			Items["Watermark"].Instance.Visible = Bool
 		end
 
+		function Watermark:SetName(NewName)
+			Name = NewName
+			Items["NameLabel"].Instance.Text = tostring(NewName)
+		end
+
 		local Frametimer = tick()
 		local Framecount = 0
-
 		local FramesPerSecond = 60
 
 		Library:Connect(RunService.RenderStepped, function()
 			Framecount += 1
 
-			if tick() - Frametimer >= 1 then 
+			if tick() - Frametimer >= 1 then
 				FramesPerSecond = Framecount
-
 				Frametimer = tick()
 				Framecount = 0
 			end
 
-			Items["Text"].Instance.Text = string.format("%s\nFPS: %s | PING: %s ms", Name, tostring(FramesPerSecond), tostring(MathFloor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())))
+			local Ping = 0
+			pcall(function()
+				Ping = MathFloor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+			end)
+
+			Items["FpsLabel"].Instance.Text = "FPS: " .. tostring(FramesPerSecond)
+			Items["PingLabel"].Instance.Text = "PING: " .. tostring(Ping) .. " ms"
 		end)
 
 		return Watermark
