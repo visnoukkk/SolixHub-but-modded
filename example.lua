@@ -1,12 +1,27 @@
+-- Fetch The UI Source
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/visnoukkk/SolixHub-but-modded/refs/heads/main/ui.lua"))()
 
+-- Creates a window
 local Window = Library:Window({
-    Name = "Solix Hub Example UI",
-    GameName = "EXAMPLE",
-    InfoName = "EXAMPLE",
-    LegacyMove = true,
-    Size = UDim2.new(0, 770, 0, 526),
-    FadeSpeed = 0.25
+    Name = "Solix Hub Example UI", -- Your UI Name
+    GameName = "EXAMPLE", -- Your Game Name
+    InfoName = "EXAMPLE", -- Your Information Text
+    LegacyMove = true, -- Displays a rectangle like UE or old windows oses
+    Size = UDim2.new(0, 770, 0, 526), -- Your UI Size
+    FadeSpeed = 0.25 -- UI Close Fade Speed
+    NotifyPos = CenterBottom -- Your Notification Positions
+    -- Here are notification codes for changing notification position:
+    -- CenterBottom
+    -- RightTop
+    -- BottomLeft
+    -- BottomRight
+    -- CenterBottomLeft
+    -- CenterBottomRight
+    -- CenterTop
+    -- CenterTopLeft
+    -- CenterTopRight
+    -- Left
+    -- Right
 })
 
 local Watermark = Library:Watermark("Solix Hub Example UI | v1.0")
