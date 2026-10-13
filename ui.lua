@@ -5019,6 +5019,8 @@ local Library do
 
 		local Window = {
 			Name = Properties.Name or Properties.name or "eclipse",
+			GameName = Properties.GameName or Properties.gamename or "EXAMPLE",
+			InfoName = Properties.InfoName or Properties.infoname or "EXAMPLE",
 			Size = Properties.Size or Properties.size or (not IsMobile and UDim2New(0, 770, 0, 526) or UDim2New(0, 526, 0, 350)),
 			FadeSpeed = Properties.FadeSpeed or Properties.fadespeed or 0.25,
 			BackgroundIcon = Properties.BackgroundIcon or Properties.backgroundicon or "rbxassetid://",
@@ -5090,14 +5092,14 @@ local Library do
 				BackgroundColor3 = FromRGB(255, 255, 255)
 			})  Items["Shadow"]:AddToTheme({ImageColor3 = "Shadow"})
 
-			-- Left title (accent colored)
+			-- Left title (accent colored) — controlled by GameName
 			Items["LeftTitle"] = Instances:Create("TextLabel", {
 				Parent = Items["MainFrame"].Instance,
 				Name = "\0",
 				FontFace = Library.Font,
 				TextColor3 = FromRGB(232, 186, 248),
 				BorderColor3 = FromRGB(0, 0, 0),
-				Text = "EXAMPLE",
+				Text = Window.GameName,
 				AutomaticSize = Enum.AutomaticSize.X,
 				Size = UDim2New(0, 0, 0, 15),
 				BackgroundTransparency = 1,
@@ -5127,14 +5129,14 @@ local Library do
 				BackgroundColor3 = FromRGB(255, 255, 255)
 			})  Items["Title"]:AddToTheme({TextColor3 = "Text"})
 
-			-- Right title (accent colored)
+			-- Right title (accent colored) — controlled by InfoName
 			Items["RightTitle"] = Instances:Create("TextLabel", {
 				Parent = Items["MainFrame"].Instance,
 				Name = "\0",
 				FontFace = Library.Font,
 				TextColor3 = FromRGB(232, 186, 248),
 				BorderColor3 = FromRGB(0, 0, 0),
-				Text = "EXAMPLE",
+				Text = Window.InfoName,
 				AutomaticSize = Enum.AutomaticSize.X,
 				Size = UDim2New(0, 0, 0, 15),
 				AnchorPoint = Vector2New(1, 0),
@@ -5331,6 +5333,21 @@ local Library do
 
 		function Window:SetBackgroundImage(Value)
 			Items["BackgroundImage"].Instance.Image = Value
+		end
+
+		function Window:SetGameName(Text)
+			Window.GameName = tostring(Text)
+			Items["LeftTitle"].Instance.Text = Window.GameName
+		end
+
+		function Window:SetInfoName(Text)
+			Window.InfoName = tostring(Text)
+			Items["RightTitle"].Instance.Text = Window.InfoName
+		end
+
+		function Window:SetTitle(Text)
+			Window.Name = tostring(Text)
+			Items["Title"].Instance.Text = Window.Name
 		end
 
 		local RenderStepped
