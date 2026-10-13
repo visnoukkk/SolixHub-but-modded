@@ -301,15 +301,62 @@ local Library do
 	Library.Theme = TableClone(Themes["Default"])
 	Library.Themes = Themes
 
+	-- Create nested folders if needed (e.g. "MyScriptHub/specific-game")
+	local EnsureFolder = function(Path)
+		Path = tostring(Path or ""):gsub("\\", "/"):gsub("^/+", ""):gsub("/+$", "")
+		if Path == "" then
+			return Path
+		end
+
+		local Current = ""
+		for Part in string.gmatch(Path, "[^/]+") do
+			Current = (Current == "") and Part or (Current .. "/" .. Part)
+			if not isfolder(Current) then
+				makefolder(Current)
+			end
+		end
+
+		return Path
+	end
+
 	-- Folders
 	for Index, Value in Library.Folders do 
-		if not isfolder(Value) then
-			makefolder(Value)
-		end
+		EnsureFolder(Value)
 	end
 
 	if not isfile(Library.Folders.Directory .. "/autoload.json") then 
 		writefile(Library.Folders.Directory .. "/autoload.json", "")
+	end
+
+	-- Config / Theme folder setters (call before CreateSettingsPage / CheckForAutoLoad)
+	Library.ConfigSaver = {
+		SetFolder = function(_, Folder)
+			Folder = EnsureFolder(Folder)
+			Library.Folders.Configs = Folder
+			return Folder
+		end,
+		GetFolder = function()
+			return Library.Folders.Configs
+		end
+	}
+
+	Library.ThemeSaver = {
+		SetFolder = function(_, Folder)
+			Folder = EnsureFolder(Folder)
+			Library.Folders.Themes = Folder
+			return Folder
+		end,
+		GetFolder = function()
+			return Library.Folders.Themes
+		end
+	}
+
+	Library.SetConfigFolder = function(self, Folder)
+		return Library.ConfigSaver:SetFolder(Folder)
+	end
+
+	Library.SetThemeFolder = function(self, Folder)
+		return Library.ThemeSaver:SetFolder(Folder)
 	end
 
 	-- Images
@@ -1077,29 +1124,27 @@ local Library do
 		local CurrentList = {}
 		local List = {}
 
+		if not isfolder(self.Folders.Configs) then
+			EnsureFolder(self.Folders.Configs)
+		end
 
-		local ConfigFolderName = string.gsub(self.Folders.Configs, self.Folders.Directory .. "/", "")
+		local Files = {}
+		pcall(function()
+			Files = listfiles(self.Folders.Configs)
+		end)
 
-		for Index, Value in listfiles(self.Folders.Configs) do
-
-			local v = tostring(Value):gsub("\\", "/")
-
-
-			local root = (self.Folders.Directory .. "/" .. ConfigFolderName .. "/")
-			root = root:gsub("([%^%$%(%)%.%[%]%*%+%-%?])", "%%%1")
-
-
-			local FileName = v:gsub("^" .. root, "")
-
+		for Index, Value in Files do
+			local FileName = tostring(Value):gsub("\\", "/")
+			FileName = FileName:match("([^/]+)$") or FileName
 
 			if not string.find(FileName, tostring(game.GameId), 1, true) then
 				continue
 			end
 
-
 			local RealName = string.gsub(FileName, tostring(game.GameId), "")
+			RealName = string.gsub(RealName, "%.json$", "")
 
-			List[Index] = { Name = RealName, RealName = FileName }
+			TableInsert(List, { Name = RealName, RealName = FileName })
 		end
 
 		local IsNew = #List ~= #CurrentList
@@ -1201,21 +1246,19 @@ local Library do
 		local CurrentList = {}
 		local List = {}
 
+		if not isfolder(self.Folders.Themes) then
+			EnsureFolder(self.Folders.Themes)
+		end
 
-		local ConfigFolderName = string.gsub(self.Folders.Themes, self.Folders.Directory .. "/", "")
+		local Files = {}
+		pcall(function()
+			Files = listfiles(self.Folders.Themes)
+		end)
 
-		for Index, Value in listfiles(self.Folders.Themes) do
-
-			local v = tostring(Value):gsub("\\", "/")
-
-
-			local root = (self.Folders.Directory .. "/" .. ConfigFolderName .. "/")
-			root = root:gsub("([%^%$%(%)%.%[%]%*%+%-%?])", "%%%1")
-
-
-			local FileName = v:gsub("^" .. root, "")
-
-			List[Index] = FileName
+		for Index, Value in Files do
+			local FileName = tostring(Value):gsub("\\", "/")
+			FileName = FileName:match("([^/]+)$") or FileName
+			TableInsert(List, FileName)
 		end
 
 		local IsNew = #List ~= #CurrentList
