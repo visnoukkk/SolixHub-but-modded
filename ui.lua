@@ -642,10 +642,66 @@ local Library do
 			local Dragging = false 
 			local DragStart
 			local StartPosition 
+			local Outline = nil
+
+			local CreateOutline = function()
+				if Outline and Outline.Parent then
+					Outline:Destroy()
+				end
+
+				Outline = InstanceNew("Frame")
+				Outline.Name = "\0"
+				Outline.BackgroundTransparency = 1
+				Outline.BorderSizePixel = 0
+				Outline.Size = UDim2New(0, Gui.AbsoluteSize.X, 0, Gui.AbsoluteSize.Y)
+				Outline.Position = UDim2New(0, Gui.AbsolutePosition.X, 0, Gui.AbsolutePosition.Y)
+				Outline.ZIndex = 10000
+				Outline.Parent = Library.Holder.Instance
+
+				-- Outer accent border (XP-style rectangle)
+				local Stroke = InstanceNew("UIStroke")
+				Stroke.Color = Library.Theme.Accent
+				Stroke.Thickness = 2
+				Stroke.LineJoinMode = Enum.LineJoinMode.Miter
+				Stroke.Parent = Outline
+
+				-- Inner dashed look using a second thinner stroke offset feel
+				local Inner = InstanceNew("Frame")
+				Inner.Name = "\0"
+				Inner.BackgroundTransparency = 1
+				Inner.BorderSizePixel = 0
+				Inner.Size = UDim2New(1, -6, 1, -6)
+				Inner.Position = UDim2New(0, 3, 0, 3)
+				Inner.ZIndex = 10001
+				Inner.Parent = Outline
+
+				local InnerStroke = InstanceNew("UIStroke")
+				InnerStroke.Color = Library.Theme.Accent
+				InnerStroke.Thickness = 1
+				InnerStroke.Transparency = 0.35
+				InnerStroke.LineJoinMode = Enum.LineJoinMode.Miter
+				InnerStroke.Parent = Inner
+
+				return Outline
+			end
+
+			local DestroyOutline = function()
+				if Outline then
+					Outline:Destroy()
+					Outline = nil
+				end
+			end
 
 			local Set = function(Input)
 				local DragDelta = Input.Position - DragStart
-				self:Tween(TweenInfo.new(0.16, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2New(StartPosition.X.Scale, StartPosition.X.Offset + DragDelta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + DragDelta.Y)})
+				local NewPos = UDim2New(StartPosition.X.Scale, StartPosition.X.Offset + DragDelta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + DragDelta.Y)
+
+				-- Move only the XP-style outline while dragging (legacy behavior)
+				if Outline then
+					Outline.Position = UDim2New(0, Gui.AbsolutePosition.X + DragDelta.X, 0, Gui.AbsolutePosition.Y + DragDelta.Y)
+					-- Keep size in sync in case window was resized
+					Outline.Size = UDim2New(0, Gui.AbsoluteSize.X, 0, Gui.AbsoluteSize.Y)
+				end
 			end
 
 			self:Connect("InputBegan", function(Input)
@@ -655,9 +711,17 @@ local Library do
 					DragStart = Input.Position
 					StartPosition = Gui.Position
 
+					CreateOutline()
+
 					Input.Changed:Connect(function()
 						if Input.UserInputState == Enum.UserInputState.End then
+							if Dragging and Outline then
+								-- Snap real window to outline position on release
+								local FinalPos = UDim2New(0, Outline.AbsolutePosition.X, 0, Outline.AbsolutePosition.Y)
+								self:Tween(TweenInfo.new(0.12, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = FinalPos})
+							end
 							Dragging = false
+							DestroyOutline()
 						end
 					end)
 				end
@@ -4941,19 +5005,13 @@ local Library do
 				ImageColor3 = FromRGB(232, 186, 248),
 				BorderColor3 = FromRGB(0, 0, 0),
 				Image = "rbxassetid://132511743665753",
-				BackgroundTransparency = 0,
+				BackgroundTransparency = 1,
 				Size = UDim2New(0, 16, 0, 16),
 				BorderSizePixel = 0,
 				ZIndex = 10001,
 				Rotation = -90,
 				BackgroundColor3 = FromRGB(232, 186, 248)
-			})  Items["Image"]:AddToTheme({ImageColor3 = "Accent", BackgroundColor3 = "Accent"})
-
-			Instances:Create("UICorner", {
-				Parent = Items["Image"].Instance,
-				Name = "\0",
-				CornerRadius = UDimNew(1, 0)
-			})
+			})  Items["Image"]:AddToTheme({ImageColor3 = "Accent"})
 
 			if IsMobile then 
 				Items["FloatingButton"] = Instances:Create("TextButton", {
