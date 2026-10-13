@@ -141,7 +141,8 @@ local Library do
 		NotifHolder = nil,
 		UnusedHolder = nil,
 		Font = nil,
-		KeyList = nil
+		KeyList = nil,
+		LegacyMove = true
 	}
 
 	Library.__index = Library
@@ -632,7 +633,7 @@ local Library do
 			self = nil
 		end
 
-		Instances.MakeDraggable = function(self)
+		Instances.MakeDraggable = function(self, UseLegacy)
 			if not self.Instance then 
 				return
 			end
@@ -644,6 +645,13 @@ local Library do
 			local StartPosition 
 			local Outline = nil
 
+			local ShouldLegacy = function()
+				if UseLegacy == nil then
+					return Library.LegacyMove == true
+				end
+				return UseLegacy == true
+			end
+
 			local CreateOutline = function()
 				if Outline and Outline.Parent then
 					Outline:Destroy()
@@ -651,36 +659,23 @@ local Library do
 
 				Outline = InstanceNew("Frame")
 				Outline.Name = "\0"
-				Outline.BackgroundTransparency = 1
+				Outline.BackgroundColor3 = Library.Theme.Accent
+				Outline.BackgroundTransparency = 0.45
 				Outline.BorderSizePixel = 0
 				Outline.Size = UDim2New(0, Gui.AbsoluteSize.X, 0, Gui.AbsoluteSize.Y)
 				Outline.Position = UDim2New(0, Gui.AbsolutePosition.X, 0, Gui.AbsolutePosition.Y)
 				Outline.ZIndex = 10000
 				Outline.Parent = Library.Holder.Instance
 
-				-- Outer accent border (XP-style rectangle)
+				local Corner = InstanceNew("UICorner")
+				Corner.CornerRadius = UDimNew(0, 6)
+				Corner.Parent = Outline
+
 				local Stroke = InstanceNew("UIStroke")
 				Stroke.Color = Library.Theme.Accent
 				Stroke.Thickness = 2
 				Stroke.LineJoinMode = Enum.LineJoinMode.Miter
 				Stroke.Parent = Outline
-
-				-- Inner dashed look using a second thinner stroke offset feel
-				local Inner = InstanceNew("Frame")
-				Inner.Name = "\0"
-				Inner.BackgroundTransparency = 1
-				Inner.BorderSizePixel = 0
-				Inner.Size = UDim2New(1, -6, 1, -6)
-				Inner.Position = UDim2New(0, 3, 0, 3)
-				Inner.ZIndex = 10001
-				Inner.Parent = Outline
-
-				local InnerStroke = InstanceNew("UIStroke")
-				InnerStroke.Color = Library.Theme.Accent
-				InnerStroke.Thickness = 1
-				InnerStroke.Transparency = 0.35
-				InnerStroke.LineJoinMode = Enum.LineJoinMode.Miter
-				InnerStroke.Parent = Inner
 
 				return Outline
 			end
@@ -696,11 +691,13 @@ local Library do
 				local DragDelta = Input.Position - DragStart
 				local NewPos = UDim2New(StartPosition.X.Scale, StartPosition.X.Offset + DragDelta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + DragDelta.Y)
 
-				-- Move only the XP-style outline while dragging (legacy behavior)
-				if Outline then
-					Outline.Position = UDim2New(0, Gui.AbsolutePosition.X + DragDelta.X, 0, Gui.AbsolutePosition.Y + DragDelta.Y)
-					-- Keep size in sync in case window was resized
-					Outline.Size = UDim2New(0, Gui.AbsoluteSize.X, 0, Gui.AbsoluteSize.Y)
+				if ShouldLegacy() then
+					if Outline then
+						Outline.Position = UDim2New(0, Outline.StartX + DragDelta.X, 0, Outline.StartY + DragDelta.Y)
+						Outline.Size = UDim2New(0, Gui.AbsoluteSize.X, 0, Gui.AbsoluteSize.Y)
+					end
+				else
+					self:Tween(TweenInfo.new(0.16, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = NewPos})
 				end
 			end
 
@@ -711,14 +708,24 @@ local Library do
 					DragStart = Input.Position
 					StartPosition = Gui.Position
 
-					CreateOutline()
+					if ShouldLegacy() then
+						CreateOutline()
+						Outline.StartX = Gui.AbsolutePosition.X
+						Outline.StartY = Gui.AbsolutePosition.Y
+					end
 
 					Input.Changed:Connect(function()
 						if Input.UserInputState == Enum.UserInputState.End then
-							if Dragging and Outline then
-								-- Snap real window to outline position on release
-								local FinalPos = UDim2New(0, Outline.AbsolutePosition.X, 0, Outline.AbsolutePosition.Y)
-								self:Tween(TweenInfo.new(0.12, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = FinalPos})
+							if Dragging and ShouldLegacy() and Outline then
+								local DragDelta = Input.Position - DragStart
+								-- Input.Position on End can be stale; use last known delta from DragStart stored on outline
+								local FinalPos = UDim2New(
+									StartPosition.X.Scale,
+									StartPosition.X.Offset + (Outline.Position.X.Offset - Outline.StartX),
+									StartPosition.Y.Scale,
+									StartPosition.Y.Offset + (Outline.Position.Y.Offset - Outline.StartY)
+								)
+								Gui.Position = FinalPos
 							end
 							Dragging = false
 							DestroyOutline()
@@ -871,29 +878,31 @@ local Library do
 		Parent = Library.Holder.Instance,
 		Name = "\0",
 		BorderColor3 = FromRGB(0, 0, 0),
-		AnchorPoint = Vector2New(1, 0),
+		AnchorPoint = Vector2New(0.5, 1),
 		BackgroundTransparency = 1,
-		Position = UDim2New(1, 0, 0, 0),
-		Size = UDim2New(0, 0, 1, 0),
+		Position = UDim2New(0.5, 0, 1, -18),
+		Size = UDim2New(0, 0, 0, 0),
 		BorderSizePixel = 0,
-		AutomaticSize = Enum.AutomaticSize.X,
+		AutomaticSize = Enum.AutomaticSize.XY,
 		BackgroundColor3 = FromRGB(255, 255, 255)
 	})
 
 	Instances:Create("UIListLayout", {
 		Parent = Library.NotifHolder.Instance,
 		Name = "\0",
-		Padding = UDimNew(0, 12),
-		SortOrder = Enum.SortOrder.LayoutOrder
+		Padding = UDimNew(0, 8),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		VerticalAlignment = Enum.VerticalAlignment.Bottom
 	})
 
 	Instances:Create("UIPadding", {
 		Parent = Library.NotifHolder.Instance,
 		Name = "\0",
-		PaddingTop = UDimNew(0, 12),
-		PaddingBottom = UDimNew(0, 12),
-		PaddingRight = UDimNew(0, 12),
-		PaddingLeft = UDimNew(0, 12)
+		PaddingTop = UDimNew(0, 0),
+		PaddingBottom = UDimNew(0, 0),
+		PaddingRight = UDimNew(0, 0),
+		PaddingLeft = UDimNew(0, 0)
 	})
 
 	Library.Unload = function(self)
@@ -4471,14 +4480,26 @@ local Library do
 		Duration = math.max(Duration or 1, 0.1)
 
 		local Items = { } do
-			Items["Notification"] = Instances:Create("Frame", {
+			Items["Wrap"] = Instances:Create("Frame", {
 				Parent = Library.NotifHolder.Instance,
 				Name = "Notification",
-				BackgroundTransparency = 0.06,
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Size = UDim2New(0, 300, 0, 0),
+				AutomaticSize = Enum.AutomaticSize.Y,
+				LayoutOrder = math.floor((tick()) * 1000),
+				ClipsDescendants = false
+			})
+
+			Items["Notification"] = Instances:Create("Frame", {
+				Parent = Items["Wrap"].Instance,
+				Name = "\0",
+				BackgroundTransparency = 1,
 				AutomaticSize = Enum.AutomaticSize.Y,
 				BackgroundColor3 = FromRGB(16, 16, 16),
 				BorderSizePixel = 0,
-				Size = UDim2New(0, 320, 0, 70)
+				Size = UDim2New(1, 0, 0, 58),
+				Position = UDim2New(0, 0, 0, 0)
 			}) Items["Notification"]:AddToTheme({BackgroundColor3 = "Background"})
 
 			Instances:Create("UICorner", {
@@ -4488,8 +4509,14 @@ local Library do
 
 			Items["Stroke"] = Instances:Create("UIStroke", {
 				Parent = Items["Notification"].Instance,
-				Color = FromRGB(158, 114, 158),
-				Transparency = 0.8
+				Color = FromRGB(232, 186, 248),
+				Transparency = 1,
+				Thickness = 1
+			}) Items["Stroke"]:AddToTheme({Color = "Accent"})
+
+			Items["Scale"] = Instances:Create("UIScale", {
+				Parent = Items["Notification"].Instance,
+				Scale = 0.92
 			})
 
 			Items["Title"] = Instances:Create("TextLabel", {
@@ -4497,11 +4524,12 @@ local Library do
 				FontFace = Library.Font,
 				Text = Text,
 				TextColor3 = FromRGB(199, 199, 203),
-				TextSize = 16,
+				TextTransparency = 1,
+				TextSize = 15,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				BackgroundTransparency = 1,
-				Size = UDim2New(1, -20, 0, 20),
-				Position = UDim2New(0, 10, 0, 6)
+				Size = UDim2New(1, -20, 0, 18),
+				Position = UDim2New(0, 12, 0, 8)
 			}) Items["Title"]:AddToTheme({TextColor3 = "Text"})
 
 			Items["Description"] = Instances:Create("TextLabel", {
@@ -4509,23 +4537,35 @@ local Library do
 				FontFace = Library.Font,
 				Text = Description,
 				TextColor3 = FromRGB(180, 180, 185),
-				TextSize = 14,
+				TextTransparency = 1,
+				TextSize = 13,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Top,
 				BackgroundTransparency = 1,
 				AutomaticSize = Enum.AutomaticSize.Y,
 				TextWrapped = true,
 				Size = UDim2New(1, -20, 0, 0),
-				Position = UDim2New(0, 10, 0, 28)
-			}) Items["Description"]:AddToTheme({TextColor3 = "Text"})
+				Position = UDim2New(0, 12, 0, 28)
+			}) Items["Description"]:AddToTheme({TextColor3 = "Inactive Text"})
+
+			Items["Pad"] = Instances:Create("UIPadding", {
+				Parent = Items["Notification"].Instance,
+				PaddingBottom = UDimNew(0, 14)
+			})
 
 			Items["Duration"] = Instances:Create("Frame", {
 				Parent = Items["Notification"].Instance,
-				BackgroundColor3 = FromRGB(44, 38, 44),
+				BackgroundColor3 = FromRGB(255, 255, 255),
+				BackgroundTransparency = 0.82,
 				BorderSizePixel = 0,
-				Size = UDim2New(1, -20, 0, 6),
-				Position = UDim2New(0, 10, 1, -12)
-			}) Items["Duration"]:AddToTheme({BackgroundColor3 = "Inline"})
+				Size = UDim2New(1, -24, 0, 3),
+				Position = UDim2New(0, 12, 1, -8)
+			})
+
+			Instances:Create("UICorner", {
+				Parent = Items["Duration"].Instance,
+				CornerRadius = UDimNew(1, 0)
+			})
 
 			Items["Accent"] = Instances:Create("Frame", {
 				Parent = Items["Duration"].Instance,
@@ -4535,9 +4575,17 @@ local Library do
 			}) Items["Accent"]:AddToTheme({BackgroundColor3 = "Accent"})
 
 			Instances:Create("UICorner", {
-				Parent = Items["Accent"].Instance
+				Parent = Items["Accent"].Instance,
+				CornerRadius = UDimNew(1, 0)
 			})
 		end
+
+		local ShowInfo = TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+		Items["Notification"]:Tween(ShowInfo, {BackgroundTransparency = 0.5})
+		Items["Scale"]:Tween(ShowInfo, {Scale = 1})
+		Items["Title"]:Tween(ShowInfo, {TextTransparency = 0})
+		Items["Description"]:Tween(ShowInfo, {TextTransparency = 0.15})
+		Items["Stroke"]:Tween(ShowInfo, {Transparency = 0.45})
 
 		Items["Accent"]:Tween(
 			TweenInfo.new(Duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
@@ -4545,9 +4593,15 @@ local Library do
 		)
 
 		task.delay(Duration, function()
-			Tween:Create(Items["Notification"].Instance, TweenInfo.new(0.3), {BackgroundTransparency = 1}, true)
+			local HideInfo = TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+			Items["Notification"]:Tween(HideInfo, {BackgroundTransparency = 1})
+			Items["Scale"]:Tween(HideInfo, {Scale = 0.94})
+			Items["Title"]:Tween(HideInfo, {TextTransparency = 1})
+			Items["Description"]:Tween(HideInfo, {TextTransparency = 1})
+			Items["Stroke"]:Tween(HideInfo, {Transparency = 1})
+			Items["Accent"]:Tween(HideInfo, {BackgroundTransparency = 1})
 			task.wait(0.3)
-			Items["Notification"]:Clean()
+			Items["Wrap"]:Clean()
 		end)
 	end
 
@@ -4559,109 +4613,61 @@ local Library do
 			Items["KeybindList"] = Instances:Create("Frame", {
 				Parent = Library.Holder.Instance,
 				Name = "\0",
-				BackgroundTransparency = 0.08,
+				BackgroundTransparency = 0.12,
 				Position = UDim2New(0, 18, 0.5, 0),
 				AnchorPoint = Vector2New(0, 0.5),
 				BorderColor3 = FromRGB(0, 0, 0),
 				BorderSizePixel = 0,
-				AutomaticSize = Enum.AutomaticSize.XY,
+				Size = UDim2New(0, 168, 0, 0),
+				AutomaticSize = Enum.AutomaticSize.Y,
 				BackgroundColor3 = FromRGB(15, 12, 16)
 			})  Items["KeybindList"]:AddToTheme({BackgroundColor3 = "Background"})
 
-			Items["KeybindList"]:MakeDraggable()
+			Items["KeybindList"]:MakeDraggable(false)
 
 			Instances:Create("UICorner", {
 				Parent = Items["KeybindList"].Instance,
 				Name = "\0",
-				CornerRadius = UDimNew(0, 8)
+				CornerRadius = UDimNew(0, 6)
 			})
 
-			-- Soft outer stroke
 			local ListStroke = Instances:Create("UIStroke", {
 				Parent = Items["KeybindList"].Instance,
 				Name = "\0",
 				Color = FromRGB(41, 37, 45),
 				Thickness = 1,
-				Transparency = 0.35
+				Transparency = 0.4
 			})
 			ListStroke:AddToTheme({Color = "Border"})
-
-			-- Accent top accent bar
-			Items["AccentBar"] = Instances:Create("Frame", {
-				Parent = Items["KeybindList"].Instance,
-				Name = "\0",
-				BorderSizePixel = 0,
-				Size = UDim2New(1, 0, 0, 3),
-				Position = UDim2New(0, 0, 0, 0),
-				BackgroundColor3 = FromRGB(232, 186, 248),
-				ZIndex = 3
-			})  Items["AccentBar"]:AddToTheme({BackgroundColor3 = "Accent"})
-
-			Instances:Create("UICorner", {
-				Parent = Items["AccentBar"].Instance,
-				Name = "\0",
-				CornerRadius = UDimNew(0, 8)
-			})
-
-			-- Clip the bottom of the accent bar so only top is rounded
-			Items["AccentClip"] = Instances:Create("Frame", {
-				Parent = Items["AccentBar"].Instance,
-				Name = "\0",
-				BorderSizePixel = 0,
-				Size = UDim2New(1, 0, 0, 4),
-				Position = UDim2New(0, 0, 1, -1),
-				BackgroundColor3 = FromRGB(232, 186, 248),
-				ZIndex = 3
-			})  Items["AccentClip"]:AddToTheme({BackgroundColor3 = "Accent"})
 
 			Instances:Create("UIPadding", {
 				Parent = Items["KeybindList"].Instance,
 				Name = "\0",
-				PaddingTop = UDimNew(0, 12),
-				PaddingBottom = UDimNew(0, 10),
-				PaddingRight = UDimNew(0, 12),
-				PaddingLeft = UDimNew(0, 12)
-			})
-
-			-- Header row
-			Items["Header"] = Instances:Create("Frame", {
-				Parent = Items["KeybindList"].Instance,
-				Name = "\0",
-				BackgroundTransparency = 1,
-				Size = UDim2New(0, 0, 0, 20),
-				AutomaticSize = Enum.AutomaticSize.X,
-				BorderSizePixel = 0
+				PaddingTop = UDimNew(0, 8),
+				PaddingBottom = UDimNew(0, 8),
+				PaddingRight = UDimNew(0, 8),
+				PaddingLeft = UDimNew(0, 8)
 			})
 
 			Items["Title"] = Instances:Create("TextLabel", {
-				Parent = Items["Header"].Instance,
-				Name = "\0",
-				FontFace = Library.Font,
-				TextColor3 = FromRGB(255, 255, 255),
-				BorderColor3 = FromRGB(0, 0, 0),
-				Text = "KEYBINDS",
-				BackgroundTransparency = 1,
-				Size = UDim2New(0, 0, 0, 18),
-				BorderSizePixel = 0,
-				AutomaticSize = Enum.AutomaticSize.X,
-				TextSize = 13,
-				BackgroundColor3 = FromRGB(255, 255, 255)
-			})  Items["Title"]:AddToTheme({TextColor3 = "Text"})
-
-			-- Divider under header
-			Items["Divider"] = Instances:Create("Frame", {
 				Parent = Items["KeybindList"].Instance,
 				Name = "\0",
+				FontFace = Library.Font,
+				TextColor3 = FromRGB(232, 186, 248),
+				BorderColor3 = FromRGB(0, 0, 0),
+				Text = "Keybinds",
+				BackgroundTransparency = 1,
+				Size = UDim2New(1, 0, 0, 14),
 				BorderSizePixel = 0,
-				Size = UDim2New(1, 0, 0, 1),
-				BackgroundColor3 = FromRGB(41, 37, 45),
-				BackgroundTransparency = 0.4
-			})  Items["Divider"]:AddToTheme({BackgroundColor3 = "Border"})
+				TextSize = 12,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				BackgroundColor3 = FromRGB(255, 255, 255)
+			})  Items["Title"]:AddToTheme({TextColor3 = "Accent"})
 
 			Instances:Create("UIListLayout", {
 				Parent = Items["KeybindList"].Instance,
 				Name = "\0",
-				Padding = UDimNew(0, 8),
+				Padding = UDimNew(0, 4),
 				SortOrder = Enum.SortOrder.LayoutOrder
 			})
 
@@ -4669,180 +4675,80 @@ local Library do
 				Parent = Items["KeybindList"].Instance,
 				Name = "\0",
 				BackgroundTransparency = 1,
-				BorderColor3 = FromRGB(0, 0, 0),
 				BorderSizePixel = 0,
-				AutomaticSize = Enum.AutomaticSize.XY,
-				BackgroundColor3 = FromRGB(255, 255, 255)
+				Size = UDim2New(1, 0, 0, 0),
+				AutomaticSize = Enum.AutomaticSize.Y,
+				LayoutOrder = 2
 			})
 
 			Instances:Create("UIListLayout", {
 				Parent = Items["Content"].Instance,
 				Name = "\0",
-				Padding = UDimNew(0, 5),
+				Padding = UDimNew(0, 2),
 				SortOrder = Enum.SortOrder.LayoutOrder
 			})
 		end
 
 		function KeybindList:Add(Key, Name, Mode)
-			-- Row container
 			local Row = Instances:Create("Frame", {
 				Parent = Items["Content"].Instance,
 				Name = "\0",
 				BackgroundTransparency = 1,
-				Size = UDim2New(0, 0, 0, 26),
-				AutomaticSize = Enum.AutomaticSize.X,
+				Size = UDim2New(1, 0, 0, 16),
 				BorderSizePixel = 0
 			})
 
-			local RowLayout = Instances:Create("UIListLayout", {
-				Parent = Row.Instance,
-				Name = "\0",
-				FillDirection = Enum.FillDirection.Horizontal,
-				VerticalAlignment = Enum.VerticalAlignment.Center,
-				Padding = UDimNew(0, 8),
-				SortOrder = Enum.SortOrder.LayoutOrder
-			})
-
-			-- Active indicator bar (left)
-			local Indicator = Instances:Create("Frame", {
-				Parent = Row.Instance,
-				Name = "\0",
-				BorderSizePixel = 0,
-				Size = UDim2New(0, 3, 0, 18),
-				BackgroundColor3 = FromRGB(41, 37, 45),
-				BackgroundTransparency = 0.5,
-				LayoutOrder = 1
-			})  Indicator:AddToTheme({BackgroundColor3 = "Border"})
-
-			Instances:Create("UICorner", {
-				Parent = Indicator.Instance,
-				Name = "\0",
-				CornerRadius = UDimNew(1, 0)
-			})
-
-			-- Key badge
-			local KeyBadge = Instances:Create("Frame", {
-				Parent = Row.Instance,
-				Name = "\0",
-				BorderSizePixel = 0,
-				Size = UDim2New(0, 0, 0, 22),
-				AutomaticSize = Enum.AutomaticSize.X,
-				BackgroundColor3 = FromRGB(36, 32, 39),
-				LayoutOrder = 2
-			})  KeyBadge:AddToTheme({BackgroundColor3 = "Element"})
-
-			Instances:Create("UICorner", {
-				Parent = KeyBadge.Instance,
-				Name = "\0",
-				CornerRadius = UDimNew(0, 5)
-			})
-
-			Instances:Create("UIPadding", {
-				Parent = KeyBadge.Instance,
-				Name = "\0",
-				PaddingLeft = UDimNew(0, 8),
-				PaddingRight = UDimNew(0, 8)
-			})
-
-			local KeyText = Instances:Create("TextLabel", {
-				Parent = KeyBadge.Instance,
-				Name = "\0",
-				FontFace = Library.Font,
-				TextColor3 = FromRGB(232, 186, 248),
-				Text = tostring(Key),
-				BackgroundTransparency = 1,
-				Size = UDim2New(0, 0, 1, 0),
-				AutomaticSize = Enum.AutomaticSize.X,
-				BorderSizePixel = 0,
-				TextSize = 12
-			})  KeyText:AddToTheme({TextColor3 = "Accent"})
-
-			-- Name label
 			local NameLabel = Instances:Create("TextLabel", {
 				Parent = Row.Instance,
 				Name = "\0",
 				FontFace = Library.Font,
 				TextColor3 = FromRGB(255, 255, 255),
 				Text = tostring(Name),
+				TextTruncate = Enum.TextTruncate.AtEnd,
 				BackgroundTransparency = 1,
-				Size = UDim2New(0, 0, 0, 18),
-				AutomaticSize = Enum.AutomaticSize.X,
+				Size = UDim2New(1, -52, 1, 0),
+				Position = UDim2New(0, 0, 0, 0),
 				BorderSizePixel = 0,
-				TextSize = 13,
-				LayoutOrder = 3
+				TextSize = 12,
+				TextXAlignment = Enum.TextXAlignment.Left
 			})  NameLabel:AddToTheme({TextColor3 = "Text"})
 
-			-- Mode tag
-			local ModeBadge = Instances:Create("Frame", {
+			local KeyText = Instances:Create("TextLabel", {
 				Parent = Row.Instance,
-				Name = "\0",
-				BorderSizePixel = 0,
-				Size = UDim2New(0, 0, 0, 18),
-				AutomaticSize = Enum.AutomaticSize.X,
-				BackgroundColor3 = FromRGB(22, 20, 24),
-				LayoutOrder = 4
-			})  ModeBadge:AddToTheme({BackgroundColor3 = "Inline"})
-
-			Instances:Create("UICorner", {
-				Parent = ModeBadge.Instance,
-				Name = "\0",
-				CornerRadius = UDimNew(0, 4)
-			})
-
-			Instances:Create("UIPadding", {
-				Parent = ModeBadge.Instance,
-				Name = "\0",
-				PaddingLeft = UDimNew(0, 6),
-				PaddingRight = UDimNew(0, 6)
-			})
-
-			local ModeText = Instances:Create("TextLabel", {
-				Parent = ModeBadge.Instance,
 				Name = "\0",
 				FontFace = Library.Font,
 				TextColor3 = FromRGB(185, 185, 185),
-				Text = tostring(Mode),
+				Text = tostring(Key),
 				BackgroundTransparency = 1,
-				Size = UDim2New(0, 0, 1, 0),
-				AutomaticSize = Enum.AutomaticSize.X,
+				Size = UDim2New(0, 50, 1, 0),
+				Position = UDim2New(1, -50, 0, 0),
 				BorderSizePixel = 0,
-				TextSize = 11
-			})  ModeText:AddToTheme({TextColor3 = "Inactive Text"})
+				TextSize = 12,
+				TextXAlignment = Enum.TextXAlignment.Right
+			})  KeyText:AddToTheme({TextColor3 = "Inactive Text"})
 
 			local NewKey = {
 				Row = Row,
-				Indicator = Indicator,
 				KeyText = KeyText,
-				NameLabel = NameLabel,
-				ModeText = ModeText,
-				KeyBadge = KeyBadge
+				NameLabel = NameLabel
 			}
 
-			function NewKey:Set(Key, Name, Mode)
-				KeyText.Instance.Text = tostring(Key)
-				NameLabel.Instance.Text = tostring(Name)
-				ModeText.Instance.Text = tostring(Mode)
+			function NewKey:Set(NewKeybind, NewName, NewMode)
+				NameLabel.Instance.Text = tostring(NewName)
+				KeyText.Instance.Text = tostring(NewKeybind)
 			end
 
 			function NewKey:SetStatus(Bool)
 				if Bool then
-					Indicator:ChangeItemTheme({BackgroundColor3 = "Accent"})
-					Indicator:Tween(nil, {BackgroundColor3 = Library.Theme.Accent, BackgroundTransparency = 0})
-					KeyBadge:ChangeItemTheme({BackgroundColor3 = "Accent"})
-					KeyBadge:Tween(nil, {BackgroundColor3 = Library.Theme.Accent})
-					KeyText:ChangeItemTheme({TextColor3 = "Background"})
-					KeyText:Tween(nil, {TextColor3 = Library.Theme.Background})
 					NameLabel:ChangeItemTheme({TextColor3 = "Accent"})
 					NameLabel:Tween(nil, {TextColor3 = Library.Theme.Accent})
-				else
-					Indicator:ChangeItemTheme({BackgroundColor3 = "Border"})
-					Indicator:Tween(nil, {BackgroundColor3 = Library.Theme.Border, BackgroundTransparency = 0.5})
-					KeyBadge:ChangeItemTheme({BackgroundColor3 = "Element"})
-					KeyBadge:Tween(nil, {BackgroundColor3 = Library.Theme.Element})
 					KeyText:ChangeItemTheme({TextColor3 = "Accent"})
 					KeyText:Tween(nil, {TextColor3 = Library.Theme.Accent})
+				else
 					NameLabel:ChangeItemTheme({TextColor3 = "Text"})
 					NameLabel:Tween(nil, {TextColor3 = Library.Theme.Text})
+					KeyText:ChangeItemTheme({TextColor3 = "Inactive Text"})
+					KeyText:Tween(nil, {TextColor3 = Library.Theme["Inactive Text"]})
 				end
 			end
 
@@ -4866,17 +4772,19 @@ local Library do
 				BorderColor3 = FromRGB(0, 0, 0),
 				AnchorPoint = Vector2New(0.5, 0),
 				Position = UDim2New(0.5, 0, 0, 12),
-				Size = UDim2New(0, 0, 0, 32),
+				Size = UDim2New(0, 0, 0, 28),
 				BorderSizePixel = 0,
 				AutomaticSize = Enum.AutomaticSize.X,
 				BackgroundColor3 = FromRGB(15, 12, 16),
 				BackgroundTransparency = 0.08
 			})  Items["Watermark"]:AddToTheme({BackgroundColor3 = "Background"})
 
+			Items["Watermark"]:MakeDraggable()
+
 			Instances:Create("UICorner", {
 				Parent = Items["Watermark"].Instance,
 				Name = "\0",
-				CornerRadius = UDimNew(0, 7)
+				CornerRadius = UDimNew(0, 6)
 			})
 
 			local WmStroke = Instances:Create("UIStroke", {
@@ -4888,31 +4796,11 @@ local Library do
 			})
 			WmStroke:AddToTheme({Color = "Border"})
 
-			-- Left accent pill
-			Items["Accent"] = Instances:Create("Frame", {
-				Parent = Items["Watermark"].Instance,
-				Name = "\0",
-				BorderSizePixel = 0,
-				Size = UDim2New(0, 4, 1, -10),
-				Position = UDim2New(0, 6, 0.5, 0),
-				AnchorPoint = Vector2New(0, 0.5),
-				BackgroundColor3 = FromRGB(232, 186, 248),
-				ZIndex = 2
-			})  Items["Accent"]:AddToTheme({BackgroundColor3 = "Accent"})
-
-			Instances:Create("UICorner", {
-				Parent = Items["Accent"].Instance,
-				Name = "\0",
-				CornerRadius = UDimNew(1, 0)
-			})
-
 			Instances:Create("UIPadding", {
 				Parent = Items["Watermark"].Instance,
 				Name = "\0",
-				PaddingTop = UDimNew(0, 0),
-				PaddingBottom = UDimNew(0, 0),
-				PaddingRight = UDimNew(0, 14),
-				PaddingLeft = UDimNew(0, 18)
+				PaddingRight = UDimNew(0, 10),
+				PaddingLeft = UDimNew(0, 10)
 			})
 
 			Items["Content"] = Instances:Create("Frame", {
@@ -4961,12 +4849,12 @@ local Library do
 					Name = "\0",
 					FontFace = Library.Font,
 					TextColor3 = FromRGB(185, 185, 185),
-					Text = "  •  ",
+					Text = "  |  ",
 					BackgroundTransparency = 1,
 					Size = UDim2New(0, 0, 1, 0),
 					AutomaticSize = Enum.AutomaticSize.X,
 					BorderSizePixel = 0,
-					TextSize = 11,
+					TextSize = 12,
 					LayoutOrder = LayoutOrder
 				})
 				Sep:AddToTheme({TextColor3 = "Inactive Text"})
@@ -5021,6 +4909,7 @@ local Library do
 			Name = Properties.Name or Properties.name or "eclipse",
 			GameName = Properties.GameName or Properties.gamename or "EXAMPLE",
 			InfoName = Properties.InfoName or Properties.infoname or "EXAMPLE",
+			LegacyMove = Properties.LegacyMove,
 			Size = Properties.Size or Properties.size or (not IsMobile and UDim2New(0, 770, 0, 526) or UDim2New(0, 526, 0, 350)),
 			FadeSpeed = Properties.FadeSpeed or Properties.fadespeed or 0.25,
 			BackgroundIcon = Properties.BackgroundIcon or Properties.backgroundicon or "rbxassetid://",
@@ -5030,6 +4919,14 @@ local Library do
 
 			Items = { }
 		}
+
+		if Window.LegacyMove == nil then
+			Window.LegacyMove = Properties.legacymove
+		end
+		if Window.LegacyMove == nil then
+			Window.LegacyMove = true
+		end
+		Library.LegacyMove = Window.LegacyMove and true or false
 
 		local Items = { } do
 			Items["MainFrame"] = Instances:Create("Frame", {
@@ -5288,7 +5185,7 @@ local Library do
 					BackgroundColor3 = Library.Theme.Background
 				})  Items["FloatingButton"]:AddToTheme({BackgroundColor3 = "Background"})
 
-				Items["FloatingButton"]:MakeDraggable()
+				Items["FloatingButton"]:MakeDraggable(false)
 
 				Items["OpenTitle"] = Instances:Create("TextLabel", {
 					Parent = Items["FloatingButton"].Instance,
@@ -5348,6 +5245,11 @@ local Library do
 		function Window:SetTitle(Text)
 			Window.Name = tostring(Text)
 			Items["Title"].Instance.Text = Window.Name
+		end
+
+		function Window:SetLegacyMove(Bool)
+			Window.LegacyMove = Bool and true or false
+			Library.LegacyMove = Window.LegacyMove
 		end
 
 		local RenderStepped
