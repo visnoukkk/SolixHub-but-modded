@@ -42,6 +42,7 @@ local Library do
 	local CoreGui = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
 	local TweenService = game:GetService("TweenService")
 	local Stats = game:GetService("Stats")
+	local GuiService = game:GetService("GuiService")
 
 	gethui = gethui or function()
 		return CoreGui
@@ -724,10 +725,18 @@ local Library do
 				return UseLegacy == true
 			end
 
+			local GetScreenPos = function()
+				-- AbsolutePosition ignores topbar inset; Holder uses IgnoreGuiInset so add it back
+				local Inset = GuiService:GetGuiInset()
+				return Gui.AbsolutePosition.X + Inset.X, Gui.AbsolutePosition.Y + Inset.Y
+			end
+
 			local CreateOutline = function()
 				if Outline and Outline.Parent then
 					Outline:Destroy()
 				end
+
+				local PosX, PosY = GetScreenPos()
 
 				Outline = InstanceNew("Frame")
 				Outline.Name = "\0"
@@ -735,7 +744,7 @@ local Library do
 				Outline.BackgroundTransparency = 0.45
 				Outline.BorderSizePixel = 0
 				Outline.Size = UDim2New(0, Gui.AbsoluteSize.X, 0, Gui.AbsoluteSize.Y)
-				Outline.Position = UDim2New(0, Gui.AbsolutePosition.X, 0, Gui.AbsolutePosition.Y)
+				Outline.Position = UDim2New(0, PosX, 0, PosY)
 				Outline.ZIndex = 10000
 				Outline.Parent = Library.Holder.Instance
 
@@ -782,8 +791,7 @@ local Library do
 
 					if ShouldLegacy() then
 						CreateOutline()
-						OutlineStartX = Gui.AbsolutePosition.X
-						OutlineStartY = Gui.AbsolutePosition.Y
+						OutlineStartX, OutlineStartY = GetScreenPos()
 					end
 
 					Input.Changed:Connect(function()
