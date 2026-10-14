@@ -1,11 +1,9 @@
--- Destroy previous instance on re-execute
 pcall(function()
 	if getgenv().Library and getgenv().Library.Unload then
 		getgenv().Library:Unload()
 	end
 end)
 
--- Fallback: wipe any leftover ScreenGuis from a previous run
 pcall(function()
 	local Parent = (gethui and gethui()) or game:GetService("CoreGui")
 	for _, Child in ipairs(Parent:GetChildren()) do
@@ -42,7 +40,6 @@ local Library do
 	local CoreGui = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
 	local TweenService = game:GetService("TweenService")
 	local Stats = game:GetService("Stats")
-	local GuiService = game:GetService("GuiService")
 
 	gethui = gethui or function()
 		return CoreGui
@@ -159,7 +156,7 @@ local Library do
 		Font = nil,
 		KeyList = nil,
 		LegacyMove = true,
-		Notifyposition = "CenterBottom",
+		NotifyPos = "CenterBottom",
 		NotifListLayout = nil
 	}
 
@@ -251,7 +248,6 @@ local Library do
 			["Text"] = FromRGB(255, 255, 255),
 			["Inactive Text"] = FromRGB(185, 185, 185),
 			["Accent"] = FromRGB(232, 186, 248),
-			["Accent2"] = FromRGB(232, 186, 248),
 			["Element"] = FromRGB(36, 32, 39),
 			["Gradient"] = FromRGB(216, 216, 216)
 		},
@@ -264,7 +260,6 @@ local Library do
 			["Text"] = FromRGB(195, 195, 195),
 			["Inactive Text"] = FromRGB(116, 116, 116),
 			["Accent"] = FromRGB(255, 98, 0),
-			["Accent2"] = FromRGB(255, 98, 0),
 			["Element"] = FromRGB(68, 28, 0),
 			["Gradient"] = FromRGB(150, 150, 150)
 		},
@@ -277,7 +272,6 @@ local Library do
 			["Text"] = FromRGB(245, 245, 245),
 			["Inactive Text"] = FromRGB(185, 185, 185),
 			["Accent"] = FromRGB(31, 106, 181),
-			["Accent2"] = FromRGB(31, 106, 181),
 			["Element"] = FromRGB(58, 66, 77),
 			["Gradient"] = FromRGB(211, 211, 211)
 		},
@@ -290,7 +284,6 @@ local Library do
 			["Text"] = FromRGB(255, 255, 255),
 			["Inactive Text"] = FromRGB(185, 185, 185),
 			["Accent"] = FromRGB(237, 170, 0),
-			["Accent2"] = FromRGB(237, 170, 0),
 			["Element"] = FromRGB(45, 45, 45),
 			["Gradient"] = FromRGB(211, 211, 211)
 		},
@@ -303,7 +296,6 @@ local Library do
 			["Text"] = FromRGB(255, 255, 255),
 			["Inactive Text"] = FromRGB(185, 185, 185),
 			["Accent"] = FromRGB(158, 79, 249),
-			["Accent2"] = FromRGB(158, 79, 249),
 			["Element"] = FromRGB(22, 20, 20),
 			["Gradient"] = FromRGB(211, 211, 211)
 		},
@@ -316,7 +308,6 @@ local Library do
 			["Text"] = FromRGB(255, 255, 255),
 			["Inactive Text"] = FromRGB(185, 185, 185),
 			["Accent"] = FromRGB(211, 255, 53),
-			["Accent2"] = FromRGB(211, 255, 53),
 			["Element"] = FromRGB(53, 53, 53),
 			["Gradient"] = FromRGB(156, 156, 156)
 		}
@@ -715,8 +706,6 @@ local Library do
 			local DragStart
 			local StartPosition 
 			local Outline = nil
-			local OutlineStartX = 0
-			local OutlineStartY = 0
 
 			local ShouldLegacy = function()
 				if UseLegacy == nil then
@@ -725,18 +714,10 @@ local Library do
 				return UseLegacy == true
 			end
 
-			local GetScreenPos = function()
-				-- AbsolutePosition ignores topbar inset; Holder uses IgnoreGuiInset so add it back
-				local Inset = GuiService:GetGuiInset()
-				return Gui.AbsolutePosition.X + Inset.X, Gui.AbsolutePosition.Y + Inset.Y
-			end
-
 			local CreateOutline = function()
 				if Outline and Outline.Parent then
 					Outline:Destroy()
 				end
-
-				local PosX, PosY = GetScreenPos()
 
 				Outline = InstanceNew("Frame")
 				Outline.Name = "\0"
@@ -744,7 +725,7 @@ local Library do
 				Outline.BackgroundTransparency = 0.45
 				Outline.BorderSizePixel = 0
 				Outline.Size = UDim2New(0, Gui.AbsoluteSize.X, 0, Gui.AbsoluteSize.Y)
-				Outline.Position = UDim2New(0, PosX, 0, PosY)
+				Outline.Position = UDim2New(0, Gui.AbsolutePosition.X, 0, Gui.AbsolutePosition.Y)
 				Outline.ZIndex = 10000
 				Outline.Parent = Library.Holder.Instance
 
@@ -774,7 +755,7 @@ local Library do
 
 				if ShouldLegacy() then
 					if Outline then
-						Outline.Position = UDim2New(0, OutlineStartX + DragDelta.X, 0, OutlineStartY + DragDelta.Y)
+						Outline.Position = UDim2New(0, Outline.StartX + DragDelta.X, 0, Outline.StartY + DragDelta.Y)
 						Outline.Size = UDim2New(0, Gui.AbsoluteSize.X, 0, Gui.AbsoluteSize.Y)
 					end
 				else
@@ -791,17 +772,20 @@ local Library do
 
 					if ShouldLegacy() then
 						CreateOutline()
-						OutlineStartX, OutlineStartY = GetScreenPos()
+						Outline.StartX = Gui.AbsolutePosition.X
+						Outline.StartY = Gui.AbsolutePosition.Y
 					end
 
 					Input.Changed:Connect(function()
 						if Input.UserInputState == Enum.UserInputState.End then
 							if Dragging and ShouldLegacy() and Outline then
+								local DragDelta = Input.Position - DragStart
+								-- Input.Position on End can be stale; use last known delta from DragStart stored on outline
 								local FinalPos = UDim2New(
 									StartPosition.X.Scale,
-									StartPosition.X.Offset + (Outline.Position.X.Offset - OutlineStartX),
+									StartPosition.X.Offset + (Outline.Position.X.Offset - Outline.StartX),
 									StartPosition.Y.Scale,
-									StartPosition.Y.Offset + (Outline.Position.Y.Offset - OutlineStartY)
+									StartPosition.Y.Offset + (Outline.Position.Y.Offset - Outline.StartY)
 								)
 								Gui.Position = FinalPos
 							end
@@ -901,11 +885,14 @@ local Library do
 	-- Custom font
 	local CustomFont = { } do
 		function CustomFont:New(Name, Weight, Style, Data)
+			if isfile(Library.Folders.Assets .. "/" .. Name .. ".json") then
+				return Font.new(getcustomasset(Library.Folders.Assets .. "/" .. Name .. ".json"))
+			end
+
 			if not isfile(Library.Folders.Assets .. "/" .. Name .. ".ttf") then 
 				writefile(Library.Folders.Assets .. "/" .. Name .. ".ttf", game:HttpGet(Data.Url))
 			end
 
-			-- Always rewrite font JSON so weight/style stay correct (fixes broken spacing from bad weight)
 			local FontData = {
 				name = Name,
 				faces = { {
@@ -926,7 +913,7 @@ local Library do
 			end
 		end
 
-		CustomFont:New("Inter", 600, "Normal", {
+		CustomFont:New("Inter", 200, "Regular", {
 			Url = "https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/InterSemibold.ttf"
 		})
 
@@ -938,10 +925,8 @@ local Library do
 		Name = "\0",
 		ZIndexBehavior = Enum.ZIndexBehavior.Global,
 		DisplayOrder = 2,
-		ResetOnSpawn = false,
-		IgnoreGuiInset = true
+		ResetOnSpawn = false
 	})
-	Library.Holder.Instance:SetAttribute("EclipseUI", true)
 
 	Library.UnusedHolder = Instances:Create("ScreenGui", {
 		Parent = gethui(),
@@ -950,7 +935,6 @@ local Library do
 		Enabled = false,
 		ResetOnSpawn = false
 	})
-	Library.UnusedHolder.Instance:SetAttribute("EclipseUI", true)
 
 	Library.NotifHolder = Instances:Create("Frame", {
 		Parent = Library.Holder.Instance,
@@ -1053,16 +1037,16 @@ local Library do
 		}
 	}
 
-	Library.SetNotifyposition = function(self, Pos)
+	Library.SetNotifyPos = function(self, Pos)
 		Pos = tostring(Pos or "CenterBottom")
 
 		local Data = NotifyPositions[Pos]
 		if not Data then
-			warn("[Library] Invalid Notifyposition: " .. Pos)
+			warn("[Library] Invalid NotifyPos: " .. Pos)
 			return false
 		end
 
-		self.Notifyposition = Pos
+		self.NotifyPos = Pos
 
 		local Holder = self.NotifHolder and self.NotifHolder.Instance
 		local Layout = self.NotifListLayout and self.NotifListLayout.Instance
@@ -1079,49 +1063,22 @@ local Library do
 	end
 
 	Library.Unload = function(self)
-		pcall(function()
-			for Index, Value in self.Connections do 
-				if Value and Value.Connection then
-					Value.Connection:Disconnect()
-				end
-			end
-		end)
+		for Index, Value in self.Connections do 
+			Value.Connection:Disconnect()
+		end
 
-		pcall(function()
-			for Index, Value in self.Threads do 
-				pcall(coroutine.close, Value)
-			end
-		end)
+		for Index, Value in self.Threads do 
+			coroutine.close(Value)
+		end
 
-		pcall(function()
-			if self.Holder and self.Holder.Clean then 
-				self.Holder:Clean()
-			elseif self.Holder and self.Holder.Instance then
-				self.Holder.Instance:Destroy()
-			end
-		end)
-
-		pcall(function()
-			if self.UnusedHolder and self.UnusedHolder.Instance then
-				self.UnusedHolder.Instance:Destroy()
-			end
-		end)
-
-		pcall(function()
-			local Parent = (gethui and gethui()) or CoreGui
-			for _, Child in ipairs(Parent:GetChildren()) do
-				if Child:IsA("ScreenGui") and Child:GetAttribute("EclipseUI") == true then
-					Child:Destroy()
-				end
-			end
-		end)
-
-		pcall(function()
-			UserInputService.MouseIconEnabled = true
-		end)
+		if self.Holder then 
+			self.Holder:Clean()
+		end
 
 		Library = nil 
 		getgenv().Library = nil
+
+		UserInputService.MouseIconEnabled = true
 	end
 
 	Library.GetImage = function(self, Image)
@@ -4715,71 +4672,47 @@ local Library do
 				Scale = 0.92
 			})
 
-			-- Vertical stack: title -> description -> progress bar (under message)
-			Items["Content"] = Instances:Create("Frame", {
-				Parent = Items["Notification"].Instance,
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				Size = UDim2New(1, 0, 0, 0),
-				AutomaticSize = Enum.AutomaticSize.Y
-			})
-
-			Instances:Create("UIListLayout", {
-				Parent = Items["Content"].Instance,
-				FillDirection = Enum.FillDirection.Vertical,
-				SortOrder = Enum.SortOrder.LayoutOrder,
-				Padding = UDimNew(0, 6)
-			})
-
-			Instances:Create("UIPadding", {
-				Parent = Items["Content"].Instance,
-				PaddingTop = UDimNew(0, 10),
-				PaddingBottom = UDimNew(0, 10),
-				PaddingLeft = UDimNew(0, 12),
-				PaddingRight = UDimNew(0, 12)
-			})
-
 			Items["Title"] = Instances:Create("TextLabel", {
-				Parent = Items["Content"].Instance,
+				Parent = Items["Notification"].Instance,
 				FontFace = Library.Font,
-				Text = tostring(Text or ""),
+				Text = Text,
 				TextColor3 = FromRGB(199, 199, 203),
 				TextTransparency = 1,
 				TextSize = 15,
-				TextScaled = false,
-				RichText = false,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				BackgroundTransparency = 1,
-				Size = UDim2New(1, 0, 0, 18),
-				LayoutOrder = 1
+				Size = UDim2New(1, -20, 0, 18),
+				Position = UDim2New(0, 12, 0, 8)
 			}) Items["Title"]:AddToTheme({TextColor3 = "Text"})
 
 			Items["Description"] = Instances:Create("TextLabel", {
-				Parent = Items["Content"].Instance,
+				Parent = Items["Notification"].Instance,
 				FontFace = Library.Font,
-				Text = tostring(Description or ""),
+				Text = Description,
 				TextColor3 = FromRGB(180, 180, 185),
 				TextTransparency = 1,
 				TextSize = 13,
-				TextScaled = false,
-				RichText = false,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Top,
 				BackgroundTransparency = 1,
 				AutomaticSize = Enum.AutomaticSize.Y,
 				TextWrapped = true,
-				Size = UDim2New(1, 0, 0, 0),
-				LayoutOrder = 2
+				Size = UDim2New(1, -20, 0, 0),
+				Position = UDim2New(0, 12, 0, 28)
 			}) Items["Description"]:AddToTheme({TextColor3 = "Inactive Text"})
 
-			-- Progress bar sits under the description message
+			Items["Pad"] = Instances:Create("UIPadding", {
+				Parent = Items["Notification"].Instance,
+				PaddingBottom = UDimNew(0, 14)
+			})
+
 			Items["Duration"] = Instances:Create("Frame", {
-				Parent = Items["Content"].Instance,
+				Parent = Items["Notification"].Instance,
 				BackgroundColor3 = FromRGB(255, 255, 255),
 				BackgroundTransparency = 0.82,
 				BorderSizePixel = 0,
-				Size = UDim2New(1, 0, 0, 3),
-				LayoutOrder = 3
+				Size = UDim2New(1, -24, 0, 3),
+				Position = UDim2New(0, 12, 1, -8)
 			})
 
 			Instances:Create("UICorner", {
@@ -5148,8 +5081,8 @@ local Library do
 		end
 		Library.LegacyMove = Window.LegacyMove and true or false
 
-		local Notifyposition = Properties.Notifyposition or Properties.notifyposition or Library.Notifyposition or "CenterBottom"
-		Library:SetNotifyposition(Notifyposition)
+		local NotifyPos = Properties.NotifyPos or Properties.notifypos or Library.NotifyPos or "CenterBottom"
+		Library:SetNotifyPos(NotifyPos)
 
 		local Items = { } do
 			Items["MainFrame"] = Instances:Create("Frame", {
@@ -5169,108 +5102,6 @@ local Library do
 
 			Items["MainFrame"]:MakeDraggable()
 			Items["MainFrame"]:MakeResizeable(Vector2New(Window.Size.X.Offset, Window.Size.Y.Offset), Vector2New(9999, 9999))
-
-			-- Fullscreen dim behind the UI when menu is open
-			Items["Dim"] = Instances:Create("Frame", {
-				Parent = (Library.Holder and Library.Holder.Instance) or nil,
-				Name = "\0",
-				BackgroundColor3 = FromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				Size = UDim2New(1, 0, 1, 0),
-				Position = UDim2New(0, 0, 0, 0),
-				Visible = false,
-				ZIndex = 0,
-				Active = false
-			})
-
-			Items["MainScale"] = Instances:Create("UIScale", {
-				Parent = Items["MainFrame"].Instance,
-				Scale = 1
-			})
-
-			-- 3D spinning letter "S" made of white blocks (centered)
-			do
-				Items["SolariaViewport"] = Instances:Create("ViewportFrame", {
-					Parent = (Library.Holder and Library.Holder.Instance) or nil,
-					Name = "\0",
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					AnchorPoint = Vector2New(0.5, 0.5),
-					Size = UDim2New(0, 280, 0, 280),
-					Position = UDim2New(0.5, 0, 0.5, 0),
-					ZIndex = 1,
-					Visible = true,
-					Ambient = FromRGB(255, 255, 255),
-					LightColor = FromRGB(255, 255, 255),
-					LightDirection = Vector3New(-1, -1, -1)
-				})
-
-				local World = InstanceNew("WorldModel")
-				World.Parent = Items["SolariaViewport"].Instance
-
-				local VPCamera = InstanceNew("Camera")
-				VPCamera.Parent = Items["SolariaViewport"].Instance
-				Items["SolariaViewport"].Instance.CurrentCamera = VPCamera
-				VPCamera.CFrame = CFrameNew(Vector3New(0, 0, 14), Vector3New(0, 0, 0))
-
-				local LetterModel = InstanceNew("Model")
-				LetterModel.Name = "S"
-				LetterModel.Parent = World
-
-				-- 5x7 pixel pattern for letter S
-				local Pattern = {
-					"01110",
-					"10001",
-					"10000",
-					"01110",
-					"00001",
-					"10001",
-					"01110",
-				}
-
-				local BlockSize = 1.15
-
-				for Row = 1, #Pattern do
-					local RowStr = Pattern[Row]
-					for Col = 1, #RowStr do
-						if string.sub(RowStr, Col, Col) == "1" then
-							local Block = InstanceNew("Part")
-							Block.Name = "Block"
-							Block.Anchored = true
-							Block.CanCollide = false
-							Block.CanQuery = false
-							Block.CanTouch = false
-							Block.Material = Enum.Material.SmoothPlastic
-							Block.Color = FromRGB(255, 255, 255)
-							Block.Size = Vector3New(BlockSize, BlockSize, BlockSize)
-							Block.CastShadow = false
-							local X = (Col - 3) * BlockSize
-							local Y = (4 - Row) * BlockSize
-							Block.CFrame = CFrameNew(X, Y, 0)
-							Block.Parent = LetterModel
-						end
-					end
-				end
-
-				local SpinConnection
-				local SpinAngle = 0
-				SpinConnection = RunService.RenderStepped:Connect(function(Dt)
-					if not Items["SolariaViewport"] or not Items["SolariaViewport"].Instance or not Items["SolariaViewport"].Instance.Parent then
-						if SpinConnection then
-							SpinConnection:Disconnect()
-						end
-						return
-					end
-					if not Items["SolariaViewport"].Instance.Visible then
-						return
-					end
-					-- Slow spin
-					SpinAngle = SpinAngle + Dt * 0.35
-					LetterModel:PivotTo(CFrame.Angles(0, SpinAngle, 0))
-				end)
-				TableInsert(Library.Connections, { Connection = SpinConnection, Name = "SolariaSpin" })
-			end
 
 			Items["ImageBackground"] = Instances:Create("ImageLabel", {
 				Parent = Items["MainFrame"].Instance,
@@ -5479,15 +5310,8 @@ local Library do
 				BorderColor3 = FromRGB(0, 0, 0),
 				Size = UDim2New(0, 16, 0, 16),
 				BorderSizePixel = 0,
-				ZIndex = 10001,
-				Active = false,
 				BackgroundColor3 = FromRGB(0, 0, 0)
 			})
-			-- Never block clicks under the custom cursor
-			pcall(function()
-				Items["Cursor"].Instance.Active = false
-				Items["Cursor"].Instance.Selectable = false
-			end)
 
 			Items["Image"] = Instances:Create("ImageLabel", {
 				Parent = Items["Cursor"].Instance,
@@ -5500,7 +5324,6 @@ local Library do
 				BorderSizePixel = 0,
 				ZIndex = 10001,
 				Rotation = -90,
-				Active = false,
 				BackgroundColor3 = FromRGB(232, 186, 248)
 			})  Items["Image"]:AddToTheme({ImageColor3 = "Accent"})
 
@@ -5543,8 +5366,10 @@ local Library do
 				}) 
 
 				Items["FloatingButton"]:Connect("MouseButton1Down", function(Input)
-					Window:SetOpen(not Window.IsOpen)
-					Items["OpenTitle"].Instance.Text = Window.IsOpen and "Close" or "Open"
+					IsOpen = not IsOpen
+					task.wait()
+					Window:SetOpen(IsOpen)
+					Items["OpenTitle"].Instance.Text = IsOpen and "Open" or "Close"
 				end)
 			end
 
@@ -5617,92 +5442,30 @@ local Library do
 			end
 		end)
 
-		local IsOpen = true
-		local Animating = false
-		Window.IsOpen = true
+		local IsOpen = false
 
 		function Window:SetOpen(Bool)
-			if Animating then
-				return
-			end
-
-			Bool = not not Bool
-			if Bool == IsOpen then
-				return
-			end
-
 			IsOpen = Bool
-			Window.IsOpen = Bool
-			Animating = true
-
-			local Speed = Window.FadeSpeed or Library.Tween.Time or 0.25
-			local OpenInfo = TweenInfo.new(Speed, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-			local CloseInfo = TweenInfo.new(Speed, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-
-			local BgOpacity = 0.3
-			if Library.Flags["Background opacity"] ~= nil then
-				BgOpacity = Library.Flags["Background opacity"]
-			end
 
 			if IsOpen then
-				-- Open: show dim + UI, fade in + scale up
-				Items["Dim"].Instance.Visible = true
 				Items["MainFrame"].Instance.Visible = true
-				if Items["SolariaViewport"] then
-					Items["SolariaViewport"].Instance.Visible = true
-				end
-				if Items["Image"] then
-					Items["Image"].Instance.Visible = true
-				end
-				UserInputService.MouseIconEnabled = false
-
-				Items["MainScale"].Instance.Scale = 0.92
-				Items["MainFrame"].Instance.BackgroundTransparency = 1
-				Items["Dim"]:Tween(OpenInfo, {BackgroundTransparency = 0.12})
-				Items["MainScale"]:Tween(OpenInfo, {Scale = 1})
-				Items["MainFrame"]:Tween(OpenInfo, {BackgroundTransparency = BgOpacity})
-
-				task.delay(Speed + 0.02, function()
-					Animating = false
-				end)
 			else
-				-- Close: fade out + scale down, then hide
-				Items["Dim"]:Tween(CloseInfo, {BackgroundTransparency = 1})
-				Items["MainScale"]:Tween(CloseInfo, {Scale = 0.92})
-				Items["MainFrame"]:Tween(CloseInfo, {BackgroundTransparency = 1})
-
-				task.delay(Speed + 0.02, function()
-					Items["MainFrame"].Instance.Visible = false
-					Items["Dim"].Instance.Visible = false
-					if Items["SolariaViewport"] then
-						Items["SolariaViewport"].Instance.Visible = false
-					end
-					if Items["Image"] then
-						Items["Image"].Instance.Visible = false
-					end
-					UserInputService.MouseIconEnabled = true
-					-- reset scale/transparency for next open
-					Items["MainScale"].Instance.Scale = 0.92
-					Items["MainFrame"].Instance.BackgroundTransparency = BgOpacity
-					Animating = false
-				end)
+				Items["MainFrame"].Instance.Visible = false
 			end
 		end
 
-		-- Start with dim visible (menu opens on load)
-		Items["Dim"].Instance.Visible = true
-		Items["Dim"].Instance.BackgroundTransparency = 0.12
-
 		Library:Connect(UserInputService.InputBegan, function(Input)
 			if tostring(Input.KeyCode) == Library.MenuKeybind or tostring(Input.UserInputType) == Library.MenuKeybind then
-				Window:SetOpen(not Window.IsOpen)
+				Window.IsOpen = not Window.IsOpen
+				Items["Image"].Instance.Visible = Window.IsOpen
+				UserInputService.MouseIconEnabled = not Window.IsOpen
+				Items["MainFrame"].Instance.Visible = Window.IsOpen
 			end
 		end)
 
 		Library:Connect(RunService.RenderStepped, function()
-			local MouseLocation = UserInputService:GetMouseLocation()
-			-- Holder uses IgnoreGuiInset; GetMouseLocation is already full-screen coords
-			Items["Cursor"].Instance.Position = UDim2New(0, MouseLocation.X, 0, MouseLocation.Y)
+			local MouseLocation = UserInputService:GetMouseLocation() 
+			Items["Cursor"].Instance.Position = UDim2New(0, MouseLocation.X - 1, 0, MouseLocation.Y - 56)           
 		end)
 
 		return setmetatable(Window, self)
@@ -7123,7 +6886,7 @@ local Library do
 		local Success, Error = Library:LoadConfig(Config)
 
 		if Success then 
-			Library:Notification("Success!", "Successfully autoloaded config.", 5)
+			Library:Notification("Success!", "Succesfully autoloaded config.", 5)
 
 			task.wait(0.3)
 
@@ -7199,7 +6962,7 @@ local Library do
 								local Success, Result = Library:LoadConfig(readfile(Library.Folders.Configs .. "/" .. CurrentConfigName))
 
 								if Success then 
-									Library:Notification("Success!", "Successfully loaded config.", 5)
+									Library:Notification("Success!", "Succesfully loaded config.", 5)
 
 									task.wait(0.3)
 
@@ -7227,7 +6990,7 @@ local Library do
 								if not Success then 
 									Library:Notification("Error!", "Failed to save config. Report this to the developers:\n"..Error, 5)
 								else
-									Library:Notification("Success!", "Successfully saved config.", 5)
+									Library:Notification("Success!", "Succesfully saved config.", 5)
 								end
 							end
 						end, false)
@@ -7245,7 +7008,7 @@ local Library do
 								local CurrentConfigName = string.gsub(ConfigSelected, ".json", "")
 								CurrentConfigName ..= "" .. game.GameId .. ".json"
 								writefile(Library.Folders.Directory .. "/autoload.json", readfile(Library.Folders.Configs .. "/" .. CurrentConfigName))
-								Library:Notification("Success!", "Successfully set autoload.", 5)
+								Library:Notification("Success!", "Succesfully set autoload.", 5)
 							end
 						end)
 
@@ -7325,7 +7088,7 @@ local Library do
 								local Success, Result = Library:LoadTheme(readfile(Library.Folders.Themes .. "/" .. ThemeSelected))
 
 								if Success then 
-									Library:Notification("Success!", "Successfully loaded theme.", 5)
+									Library:Notification("Success!", "Succesfully loaded theme.", 5)
 
 									task.wait(0.3)
 
@@ -7350,7 +7113,7 @@ local Library do
 								if not Success then 
 									Library:Notification("Error!", "Failed to save theme. Report this to the developers:\n"..Error, 5)
 								else
-									Library:Notification("Success!", "Successfully saved theme.", 5)
+									Library:Notification("Success!", "Succesfully saved theme.", 5)
 								end
 							end
 						end, false)
@@ -7467,35 +7230,10 @@ local Library do
 
 					do
 						for Index, Value in Library.Theme do 
-							if Index == "Accent2" then
-								continue -- shown on the Accent row as second colorbox
-							end
-
-							local ThemeLabel = ThemeSection:Label(Index, "Left")
-
-							Library.ThemeColorpickers[Index] = ThemeLabel:Colorpicker({
-								Name = Index,
-								Default = Value,
-								Flag = "Theme"..Index,
-								Callback = function(Color)
-									Library.Theme[Index] = Color
-									Library:ChangeTheme(Index, Color)
-								end
-							})
-
-							-- Accent row gets two colorboxes (Accent + Accent2)
-							if Index == "Accent" then
-								local Accent2Default = Library.Theme["Accent2"] or Value
-								Library.ThemeColorpickers["Accent2"] = ThemeLabel:Colorpicker({
-									Name = "Accent2",
-									Default = Accent2Default,
-									Flag = "ThemeAccent2",
-									Callback = function(Color)
-										Library.Theme["Accent2"] = Color
-										Library:ChangeTheme("Accent2", Color)
-									end
-								})
-							end
+							Library.ThemeColorpickers[Index] = ThemeSection:Label(Index, "Left"):Colorpicker({Name = Index, Default = Value, Flag = "Theme"..Index, Callback = function(Value) 
+								Library.Theme[Index] = Value
+								Library:ChangeTheme(Index, Value)
+							end})
 						end
 					end
 				end
@@ -7503,7 +7241,5 @@ local Library do
 		end
 	end
 end
-
-getgenv().Library = Library
 
 return Library
