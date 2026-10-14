@@ -1,6 +1,21 @@
-if getgenv().Library then 
-	getgenv().Library:Unload()
-end
+-- Destroy previous instance on re-execute
+pcall(function()
+	if getgenv().Library and getgenv().Library.Unload then
+		getgenv().Library:Unload()
+	end
+end)
+
+-- Fallback: wipe any leftover ScreenGuis from a previous run
+pcall(function()
+	local Parent = (gethui and gethui()) or game:GetService("CoreGui")
+	for _, Child in ipairs(Parent:GetChildren()) do
+		if Child:IsA("ScreenGui") and Child:GetAttribute("EclipseUI") == true then
+			Child:Destroy()
+		end
+	end
+end)
+
+getgenv().Library = nil
 
 if not isfolder("eclipse") then
 	makefolder("eclipse")
@@ -918,6 +933,7 @@ local Library do
 		ResetOnSpawn = false,
 		IgnoreGuiInset = true
 	})
+	Library.Holder.Instance:SetAttribute("EclipseUI", true)
 
 	Library.UnusedHolder = Instances:Create("ScreenGui", {
 		Parent = gethui(),
@@ -926,6 +942,7 @@ local Library do
 		Enabled = false,
 		ResetOnSpawn = false
 	})
+	Library.UnusedHolder.Instance:SetAttribute("EclipseUI", true)
 
 	Library.NotifHolder = Instances:Create("Frame", {
 		Parent = Library.Holder.Instance,
@@ -1054,22 +1071,49 @@ local Library do
 	end
 
 	Library.Unload = function(self)
-		for Index, Value in self.Connections do 
-			Value.Connection:Disconnect()
-		end
+		pcall(function()
+			for Index, Value in self.Connections do 
+				if Value and Value.Connection then
+					Value.Connection:Disconnect()
+				end
+			end
+		end)
 
-		for Index, Value in self.Threads do 
-			coroutine.close(Value)
-		end
+		pcall(function()
+			for Index, Value in self.Threads do 
+				pcall(coroutine.close, Value)
+			end
+		end)
 
-		if self.Holder then 
-			self.Holder:Clean()
-		end
+		pcall(function()
+			if self.Holder and self.Holder.Clean then 
+				self.Holder:Clean()
+			elseif self.Holder and self.Holder.Instance then
+				self.Holder.Instance:Destroy()
+			end
+		end)
+
+		pcall(function()
+			if self.UnusedHolder and self.UnusedHolder.Instance then
+				self.UnusedHolder.Instance:Destroy()
+			end
+		end)
+
+		pcall(function()
+			local Parent = (gethui and gethui()) or CoreGui
+			for _, Child in ipairs(Parent:GetChildren()) do
+				if Child:IsA("ScreenGui") and Child:GetAttribute("EclipseUI") == true then
+					Child:Destroy()
+				end
+			end
+		end)
+
+		pcall(function()
+			UserInputService.MouseIconEnabled = true
+		end)
 
 		Library = nil 
 		getgenv().Library = nil
-
-		UserInputService.MouseIconEnabled = true
 	end
 
 	Library.GetImage = function(self, Image)
@@ -5214,7 +5258,7 @@ local Library do
 					end
 					-- Slow spin
 					SpinAngle = SpinAngle + Dt * 0.35
-					LetterModel:PivotTo(CFrame.Angles(0, SpinAngle, 0) * CFrame.Angles(MathRad(10), 0, 0))
+					LetterModel:PivotTo(CFrame.Angles(0, SpinAngle, 0))
 				end)
 				TableInsert(Library.Connections, { Connection = SpinConnection, Name = "SolariaSpin" })
 			end
@@ -7441,5 +7485,7 @@ local Library do
 		end
 	end
 end
+
+getgenv().Library = Library
 
 return Library
