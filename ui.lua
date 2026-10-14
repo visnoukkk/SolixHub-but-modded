@@ -915,7 +915,8 @@ local Library do
 		Name = "\0",
 		ZIndexBehavior = Enum.ZIndexBehavior.Global,
 		DisplayOrder = 2,
-		ResetOnSpawn = false
+		ResetOnSpawn = false,
+		IgnoreGuiInset = true
 	})
 
 	Library.UnusedHolder = Instances:Create("ScreenGui", {
@@ -5127,7 +5128,7 @@ local Library do
 				Size = UDim2New(1, 0, 1, 0),
 				Position = UDim2New(0, 0, 0, 0),
 				Visible = false,
-				ZIndex = 1
+				ZIndex = 0
 			})
 
 			Items["MainScale"] = Instances:Create("UIScale", {
@@ -5135,15 +5136,16 @@ local Library do
 				Scale = 1
 			})
 
-			-- 3D spinning "SOLARIA" text made of white blocks (ViewportFrame)
+			-- 3D spinning letter "S" made of white blocks (centered)
 			do
 				Items["SolariaViewport"] = Instances:Create("ViewportFrame", {
 					Parent = (Library.Holder and Library.Holder.Instance) or nil,
 					Name = "\0",
 					BackgroundTransparency = 1,
 					BorderSizePixel = 0,
-					Size = UDim2New(1, 0, 0, 120),
-					Position = UDim2New(0, 0, 0, 40),
+					AnchorPoint = Vector2New(0.5, 0.5),
+					Size = UDim2New(0, 280, 0, 280),
+					Position = UDim2New(0.5, 0, 0.5, 0),
 					ZIndex = 1,
 					Visible = true,
 					Ambient = FromRGB(255, 255, 255),
@@ -5157,101 +5159,43 @@ local Library do
 				local VPCamera = InstanceNew("Camera")
 				VPCamera.Parent = Items["SolariaViewport"].Instance
 				Items["SolariaViewport"].Instance.CurrentCamera = VPCamera
-				VPCamera.CFrame = CFrameNew(Vector3New(0, 0, 28), Vector3New(0, 0, 0))
+				VPCamera.CFrame = CFrameNew(Vector3New(0, 0, 14), Vector3New(0, 0, 0))
 
 				local LetterModel = InstanceNew("Model")
-				LetterModel.Name = "SOLARIA"
+				LetterModel.Name = "S"
 				LetterModel.Parent = World
 
-				-- 5x7 pixel patterns for each letter
-				local Glyphs = {
-					S = {
-						"01110",
-						"10001",
-						"10000",
-						"01110",
-						"00001",
-						"10001",
-						"01110",
-					},
-					O = {
-						"01110",
-						"10001",
-						"10001",
-						"10001",
-						"10001",
-						"10001",
-						"01110",
-					},
-					L = {
-						"10000",
-						"10000",
-						"10000",
-						"10000",
-						"10000",
-						"10000",
-						"11111",
-					},
-					A = {
-						"01110",
-						"10001",
-						"10001",
-						"11111",
-						"10001",
-						"10001",
-						"10001",
-					},
-					R = {
-						"11110",
-						"10001",
-						"10001",
-						"11110",
-						"10100",
-						"10010",
-						"10001",
-					},
-					I = {
-						"11111",
-						"00100",
-						"00100",
-						"00100",
-						"00100",
-						"00100",
-						"11111",
-					},
+				-- 5x7 pixel pattern for letter S
+				local Pattern = {
+					"01110",
+					"10001",
+					"10000",
+					"01110",
+					"00001",
+					"10001",
+					"01110",
 				}
 
-				local BlockSize = 0.85
-				local LetterGap = 6.2
-				local Word = "SOLARIA"
-				local TotalWidth = (#Word - 1) * LetterGap
-				local StartX = -TotalWidth / 2
+				local BlockSize = 1.15
 
-				for LetterIndex = 1, #Word do
-					local Char = string.sub(Word, LetterIndex, LetterIndex)
-					local Pattern = Glyphs[Char]
-					if Pattern then
-						local BaseX = StartX + (LetterIndex - 1) * LetterGap
-						for Row = 1, #Pattern do
-							local RowStr = Pattern[Row]
-							for Col = 1, #RowStr do
-								if string.sub(RowStr, Col, Col) == "1" then
-									local Block = InstanceNew("Part")
-									Block.Name = "Block"
-									Block.Anchored = true
-									Block.CanCollide = false
-									Block.CanQuery = false
-									Block.CanTouch = false
-									Block.Material = Enum.Material.SmoothPlastic
-									Block.Color = FromRGB(255, 255, 255)
-									Block.Size = Vector3New(BlockSize, BlockSize, BlockSize)
-									Block.CastShadow = false
-									local X = BaseX + (Col - 3) * BlockSize
-									local Y = (4 - Row) * BlockSize
-									Block.CFrame = CFrameNew(X, Y, 0)
-									Block.Parent = LetterModel
-								end
-							end
+				for Row = 1, #Pattern do
+					local RowStr = Pattern[Row]
+					for Col = 1, #RowStr do
+						if string.sub(RowStr, Col, Col) == "1" then
+							local Block = InstanceNew("Part")
+							Block.Name = "Block"
+							Block.Anchored = true
+							Block.CanCollide = false
+							Block.CanQuery = false
+							Block.CanTouch = false
+							Block.Material = Enum.Material.SmoothPlastic
+							Block.Color = FromRGB(255, 255, 255)
+							Block.Size = Vector3New(BlockSize, BlockSize, BlockSize)
+							Block.CastShadow = false
+							local X = (Col - 3) * BlockSize
+							local Y = (4 - Row) * BlockSize
+							Block.CFrame = CFrameNew(X, Y, 0)
+							Block.Parent = LetterModel
 						end
 					end
 				end
@@ -5268,8 +5212,9 @@ local Library do
 					if not Items["SolariaViewport"].Instance.Visible then
 						return
 					end
-					SpinAngle = SpinAngle + Dt * 0.9
-					LetterModel:PivotTo(CFrame.Angles(0, SpinAngle, 0) * CFrame.Angles(MathRad(8), 0, 0))
+					-- Slow spin
+					SpinAngle = SpinAngle + Dt * 0.35
+					LetterModel:PivotTo(CFrame.Angles(0, SpinAngle, 0) * CFrame.Angles(MathRad(10), 0, 0))
 				end)
 				TableInsert(Library.Connections, { Connection = SpinConnection, Name = "SolariaSpin" })
 			end
