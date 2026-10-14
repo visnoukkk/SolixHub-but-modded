@@ -1,9 +1,11 @@
+-- Destroy previous instance on re-execute
 pcall(function()
 	if getgenv().Library and getgenv().Library.Unload then
 		getgenv().Library:Unload()
 	end
 end)
 
+-- Fallback: wipe any leftover ScreenGuis from a previous run
 pcall(function()
 	local Parent = (gethui and gethui()) or game:GetService("CoreGui")
 	for _, Child in ipairs(Parent:GetChildren()) do
@@ -156,7 +158,7 @@ local Library do
 		Font = nil,
 		KeyList = nil,
 		LegacyMove = true,
-		NotifyPos = "CenterBottom",
+		Notifyposition = "CenterBottom",
 		NotifListLayout = nil
 	}
 
@@ -706,6 +708,8 @@ local Library do
 			local DragStart
 			local StartPosition 
 			local Outline = nil
+			local OutlineStartX = 0
+			local OutlineStartY = 0
 
 			local ShouldLegacy = function()
 				if UseLegacy == nil then
@@ -755,7 +759,7 @@ local Library do
 
 				if ShouldLegacy() then
 					if Outline then
-						Outline.Position = UDim2New(0, Outline.StartX + DragDelta.X, 0, Outline.StartY + DragDelta.Y)
+						Outline.Position = UDim2New(0, OutlineStartX + DragDelta.X, 0, OutlineStartY + DragDelta.Y)
 						Outline.Size = UDim2New(0, Gui.AbsoluteSize.X, 0, Gui.AbsoluteSize.Y)
 					end
 				else
@@ -772,20 +776,18 @@ local Library do
 
 					if ShouldLegacy() then
 						CreateOutline()
-						Outline.StartX = Gui.AbsolutePosition.X
-						Outline.StartY = Gui.AbsolutePosition.Y
+						OutlineStartX = Gui.AbsolutePosition.X
+						OutlineStartY = Gui.AbsolutePosition.Y
 					end
 
 					Input.Changed:Connect(function()
 						if Input.UserInputState == Enum.UserInputState.End then
 							if Dragging and ShouldLegacy() and Outline then
-								local DragDelta = Input.Position - DragStart
-								-- Input.Position on End can be stale; use last known delta from DragStart stored on outline
 								local FinalPos = UDim2New(
 									StartPosition.X.Scale,
-									StartPosition.X.Offset + (Outline.Position.X.Offset - Outline.StartX),
+									StartPosition.X.Offset + (Outline.Position.X.Offset - OutlineStartX),
 									StartPosition.Y.Scale,
-									StartPosition.Y.Offset + (Outline.Position.Y.Offset - Outline.StartY)
+									StartPosition.Y.Offset + (Outline.Position.Y.Offset - OutlineStartY)
 								)
 								Gui.Position = FinalPos
 							end
@@ -885,14 +887,11 @@ local Library do
 	-- Custom font
 	local CustomFont = { } do
 		function CustomFont:New(Name, Weight, Style, Data)
-			if isfile(Library.Folders.Assets .. "/" .. Name .. ".json") then
-				return Font.new(getcustomasset(Library.Folders.Assets .. "/" .. Name .. ".json"))
-			end
-
 			if not isfile(Library.Folders.Assets .. "/" .. Name .. ".ttf") then 
 				writefile(Library.Folders.Assets .. "/" .. Name .. ".ttf", game:HttpGet(Data.Url))
 			end
 
+			-- Always rewrite font JSON so weight/style stay correct (fixes broken spacing from bad weight)
 			local FontData = {
 				name = Name,
 				faces = { {
@@ -913,7 +912,7 @@ local Library do
 			end
 		end
 
-		CustomFont:New("Inter", 200, "Regular", {
+		CustomFont:New("Inter", 600, "Normal", {
 			Url = "https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/InterSemibold.ttf"
 		})
 
@@ -1037,16 +1036,16 @@ local Library do
 		}
 	}
 
-	Library.SetNotifyPos = function(self, Pos)
+	Library.SetNotifyposition = function(self, Pos)
 		Pos = tostring(Pos or "CenterBottom")
 
 		local Data = NotifyPositions[Pos]
 		if not Data then
-			warn("[Library] Invalid NotifyPos: " .. Pos)
+			warn("[Library] Invalid Notifyposition: " .. Pos)
 			return false
 		end
 
-		self.NotifyPos = Pos
+		self.Notifyposition = Pos
 
 		local Holder = self.NotifHolder and self.NotifHolder.Instance
 		local Layout = self.NotifListLayout and self.NotifListLayout.Instance
@@ -4675,29 +4674,33 @@ local Library do
 			Items["Title"] = Instances:Create("TextLabel", {
 				Parent = Items["Notification"].Instance,
 				FontFace = Library.Font,
-				Text = Text,
+				Text = tostring(Text or ""),
 				TextColor3 = FromRGB(199, 199, 203),
 				TextTransparency = 1,
 				TextSize = 15,
+				TextScaled = false,
+				RichText = false,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				BackgroundTransparency = 1,
-				Size = UDim2New(1, -20, 0, 18),
+				Size = UDim2New(1, -24, 0, 18),
 				Position = UDim2New(0, 12, 0, 8)
 			}) Items["Title"]:AddToTheme({TextColor3 = "Text"})
 
 			Items["Description"] = Instances:Create("TextLabel", {
 				Parent = Items["Notification"].Instance,
 				FontFace = Library.Font,
-				Text = Description,
+				Text = tostring(Description or ""),
 				TextColor3 = FromRGB(180, 180, 185),
 				TextTransparency = 1,
 				TextSize = 13,
+				TextScaled = false,
+				RichText = false,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Top,
 				BackgroundTransparency = 1,
 				AutomaticSize = Enum.AutomaticSize.Y,
 				TextWrapped = true,
-				Size = UDim2New(1, -20, 0, 0),
+				Size = UDim2New(1, -24, 0, 0),
 				Position = UDim2New(0, 12, 0, 28)
 			}) Items["Description"]:AddToTheme({TextColor3 = "Inactive Text"})
 
@@ -5081,8 +5084,8 @@ local Library do
 		end
 		Library.LegacyMove = Window.LegacyMove and true or false
 
-		local NotifyPos = Properties.NotifyPos or Properties.notifypos or Library.NotifyPos or "CenterBottom"
-		Library:SetNotifyPos(NotifyPos)
+		local Notifyposition = Properties.Notifyposition or Properties.notifyposition or Library.Notifyposition or "CenterBottom"
+		Library:SetNotifyposition(Notifyposition)
 
 		local Items = { } do
 			Items["MainFrame"] = Instances:Create("Frame", {
@@ -6886,7 +6889,7 @@ local Library do
 		local Success, Error = Library:LoadConfig(Config)
 
 		if Success then 
-			Library:Notification("Success!", "Succesfully autoloaded config.", 5)
+			Library:Notification("Success!", "Successfully autoloaded config.", 5)
 
 			task.wait(0.3)
 
@@ -6962,7 +6965,7 @@ local Library do
 								local Success, Result = Library:LoadConfig(readfile(Library.Folders.Configs .. "/" .. CurrentConfigName))
 
 								if Success then 
-									Library:Notification("Success!", "Succesfully loaded config.", 5)
+									Library:Notification("Success!", "Successfully loaded config.", 5)
 
 									task.wait(0.3)
 
@@ -6990,7 +6993,7 @@ local Library do
 								if not Success then 
 									Library:Notification("Error!", "Failed to save config. Report this to the developers:\n"..Error, 5)
 								else
-									Library:Notification("Success!", "Succesfully saved config.", 5)
+									Library:Notification("Success!", "Successfully saved config.", 5)
 								end
 							end
 						end, false)
@@ -7008,7 +7011,7 @@ local Library do
 								local CurrentConfigName = string.gsub(ConfigSelected, ".json", "")
 								CurrentConfigName ..= "" .. game.GameId .. ".json"
 								writefile(Library.Folders.Directory .. "/autoload.json", readfile(Library.Folders.Configs .. "/" .. CurrentConfigName))
-								Library:Notification("Success!", "Succesfully set autoload.", 5)
+								Library:Notification("Success!", "Successfully set autoload.", 5)
 							end
 						end)
 
@@ -7088,7 +7091,7 @@ local Library do
 								local Success, Result = Library:LoadTheme(readfile(Library.Folders.Themes .. "/" .. ThemeSelected))
 
 								if Success then 
-									Library:Notification("Success!", "Succesfully loaded theme.", 5)
+									Library:Notification("Success!", "Successfully loaded theme.", 5)
 
 									task.wait(0.3)
 
@@ -7113,7 +7116,7 @@ local Library do
 								if not Success then 
 									Library:Notification("Error!", "Failed to save theme. Report this to the developers:\n"..Error, 5)
 								else
-									Library:Notification("Success!", "Succesfully saved theme.", 5)
+									Library:Notification("Success!", "Successfully saved theme.", 5)
 								end
 							end
 						end, false)
