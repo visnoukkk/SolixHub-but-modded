@@ -9,7 +9,7 @@ local Window = Library:Window({
     LegacyMove = true, -- Displays a rectangle like UE or old windows oses
     Size = UDim2.new(0, 770, 0, 526), -- Your UI Size
     FadeSpeed = 0.25 -- UI Close Fade Speed
-    Notifyposition = CenterBottom -- Your Notification Positions
+    Notifyposition = Right -- Your Notification Positions
     -- Here are notification codes for changing notification position:
     -- CenterBottom
     -- RightTop
