@@ -5180,7 +5180,8 @@ local Library do
 				Size = UDim2New(1, 0, 1, 0),
 				Position = UDim2New(0, 0, 0, 0),
 				Visible = false,
-				ZIndex = 0
+				ZIndex = 0,
+				Active = false
 			})
 
 			Items["MainScale"] = Instances:Create("UIScale", {
@@ -5478,8 +5479,15 @@ local Library do
 				BorderColor3 = FromRGB(0, 0, 0),
 				Size = UDim2New(0, 16, 0, 16),
 				BorderSizePixel = 0,
+				ZIndex = 10001,
+				Active = false,
 				BackgroundColor3 = FromRGB(0, 0, 0)
 			})
+			-- Never block clicks under the custom cursor
+			pcall(function()
+				Items["Cursor"].Instance.Active = false
+				Items["Cursor"].Instance.Selectable = false
+			end)
 
 			Items["Image"] = Instances:Create("ImageLabel", {
 				Parent = Items["Cursor"].Instance,
@@ -5492,6 +5500,7 @@ local Library do
 				BorderSizePixel = 0,
 				ZIndex = 10001,
 				Rotation = -90,
+				Active = false,
 				BackgroundColor3 = FromRGB(232, 186, 248)
 			})  Items["Image"]:AddToTheme({ImageColor3 = "Accent"})
 
@@ -5691,8 +5700,9 @@ local Library do
 		end)
 
 		Library:Connect(RunService.RenderStepped, function()
-			local MouseLocation = UserInputService:GetMouseLocation() 
-			Items["Cursor"].Instance.Position = UDim2New(0, MouseLocation.X - 1, 0, MouseLocation.Y - 56)           
+			local MouseLocation = UserInputService:GetMouseLocation()
+			-- Holder uses IgnoreGuiInset; GetMouseLocation is already full-screen coords
+			Items["Cursor"].Instance.Position = UDim2New(0, MouseLocation.X, 0, MouseLocation.Y)
 		end)
 
 		return setmetatable(Window, self)
