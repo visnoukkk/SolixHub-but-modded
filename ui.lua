@@ -5135,6 +5135,145 @@ local Library do
 				Scale = 1
 			})
 
+			-- 3D spinning "SOLARIA" text made of white blocks (ViewportFrame)
+			do
+				Items["SolariaViewport"] = Instances:Create("ViewportFrame", {
+					Parent = (Library.Holder and Library.Holder.Instance) or nil,
+					Name = "\0",
+					BackgroundTransparency = 1,
+					BorderSizePixel = 0,
+					Size = UDim2New(1, 0, 0, 120),
+					Position = UDim2New(0, 0, 0, 40),
+					ZIndex = 1,
+					Visible = true,
+					Ambient = FromRGB(255, 255, 255),
+					LightColor = FromRGB(255, 255, 255),
+					LightDirection = Vector3New(-1, -1, -1)
+				})
+
+				local World = InstanceNew("WorldModel")
+				World.Parent = Items["SolariaViewport"].Instance
+
+				local VPCamera = InstanceNew("Camera")
+				VPCamera.Parent = Items["SolariaViewport"].Instance
+				Items["SolariaViewport"].Instance.CurrentCamera = VPCamera
+				VPCamera.CFrame = CFrameNew(Vector3New(0, 0, 28), Vector3New(0, 0, 0))
+
+				local LetterModel = InstanceNew("Model")
+				LetterModel.Name = "SOLARIA"
+				LetterModel.Parent = World
+
+				-- 5x7 pixel patterns for each letter
+				local Glyphs = {
+					S = {
+						"01110",
+						"10001",
+						"10000",
+						"01110",
+						"00001",
+						"10001",
+						"01110",
+					},
+					O = {
+						"01110",
+						"10001",
+						"10001",
+						"10001",
+						"10001",
+						"10001",
+						"01110",
+					},
+					L = {
+						"10000",
+						"10000",
+						"10000",
+						"10000",
+						"10000",
+						"10000",
+						"11111",
+					},
+					A = {
+						"01110",
+						"10001",
+						"10001",
+						"11111",
+						"10001",
+						"10001",
+						"10001",
+					},
+					R = {
+						"11110",
+						"10001",
+						"10001",
+						"11110",
+						"10100",
+						"10010",
+						"10001",
+					},
+					I = {
+						"11111",
+						"00100",
+						"00100",
+						"00100",
+						"00100",
+						"00100",
+						"11111",
+					},
+				}
+
+				local BlockSize = 0.85
+				local LetterGap = 6.2
+				local Word = "SOLARIA"
+				local TotalWidth = (#Word - 1) * LetterGap
+				local StartX = -TotalWidth / 2
+
+				for LetterIndex = 1, #Word do
+					local Char = string.sub(Word, LetterIndex, LetterIndex)
+					local Pattern = Glyphs[Char]
+					if Pattern then
+						local BaseX = StartX + (LetterIndex - 1) * LetterGap
+						for Row = 1, #Pattern do
+							local RowStr = Pattern[Row]
+							for Col = 1, #RowStr do
+								if string.sub(RowStr, Col, Col) == "1" then
+									local Block = InstanceNew("Part")
+									Block.Name = "Block"
+									Block.Anchored = true
+									Block.CanCollide = false
+									Block.CanQuery = false
+									Block.CanTouch = false
+									Block.Material = Enum.Material.SmoothPlastic
+									Block.Color = FromRGB(255, 255, 255)
+									Block.Size = Vector3New(BlockSize, BlockSize, BlockSize)
+									Block.CastShadow = false
+									local X = BaseX + (Col - 3) * BlockSize
+									local Y = (4 - Row) * BlockSize
+									Block.CFrame = CFrameNew(X, Y, 0)
+									Block.Parent = LetterModel
+								end
+							end
+						end
+					end
+				end
+
+				local SpinConnection
+				local SpinAngle = 0
+				SpinConnection = RunService.RenderStepped:Connect(function(Dt)
+					if not Items["SolariaViewport"] or not Items["SolariaViewport"].Instance or not Items["SolariaViewport"].Instance.Parent then
+						if SpinConnection then
+							SpinConnection:Disconnect()
+						end
+						return
+					end
+					if not Items["SolariaViewport"].Instance.Visible then
+						return
+					end
+					SpinAngle = SpinAngle + Dt * 0.9
+					LetterModel:PivotTo(CFrame.Angles(0, SpinAngle, 0) * CFrame.Angles(MathRad(8), 0, 0))
+				end)
+				TableInsert(Library.Connections, { Connection = SpinConnection, Name = "SolariaSpin" })
+			end
+
 			Items["ImageBackground"] = Instances:Create("ImageLabel", {
 				Parent = Items["MainFrame"].Instance,
 				Name = "\0",
@@ -5503,6 +5642,9 @@ local Library do
 				-- Open: show dim + UI, fade in + scale up
 				Items["Dim"].Instance.Visible = true
 				Items["MainFrame"].Instance.Visible = true
+				if Items["SolariaViewport"] then
+					Items["SolariaViewport"].Instance.Visible = true
+				end
 				if Items["Image"] then
 					Items["Image"].Instance.Visible = true
 				end
@@ -5510,7 +5652,7 @@ local Library do
 
 				Items["MainScale"].Instance.Scale = 0.92
 				Items["MainFrame"].Instance.BackgroundTransparency = 1
-				Items["Dim"]:Tween(OpenInfo, {BackgroundTransparency = 0.45})
+				Items["Dim"]:Tween(OpenInfo, {BackgroundTransparency = 0.12})
 				Items["MainScale"]:Tween(OpenInfo, {Scale = 1})
 				Items["MainFrame"]:Tween(OpenInfo, {BackgroundTransparency = BgOpacity})
 
@@ -5526,6 +5668,9 @@ local Library do
 				task.delay(Speed + 0.02, function()
 					Items["MainFrame"].Instance.Visible = false
 					Items["Dim"].Instance.Visible = false
+					if Items["SolariaViewport"] then
+						Items["SolariaViewport"].Instance.Visible = false
+					end
 					if Items["Image"] then
 						Items["Image"].Instance.Visible = false
 					end
@@ -5540,7 +5685,7 @@ local Library do
 
 		-- Start with dim visible (menu opens on load)
 		Items["Dim"].Instance.Visible = true
-		Items["Dim"].Instance.BackgroundTransparency = 0.45
+		Items["Dim"].Instance.BackgroundTransparency = 0.12
 
 		Library:Connect(UserInputService.InputBegan, function(Input)
 			if tostring(Input.KeyCode) == Library.MenuKeybind or tostring(Input.UserInputType) == Library.MenuKeybind then
